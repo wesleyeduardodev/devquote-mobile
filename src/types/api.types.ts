@@ -48,6 +48,13 @@ export interface BaseFilters {
   }>;
 }
 
+// Query parameters for API calls
+export interface QueryParams extends BaseFilters {
+  search?: string;
+  status?: string | string[];
+  [key: string]: any;
+}
+
 // Sort interface
 export interface SortInfo {
   field: string;

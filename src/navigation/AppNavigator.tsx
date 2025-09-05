@@ -19,6 +19,7 @@ import TaskListScreen from '../screens/tasks/TaskListScreen';
 import DeliveryListScreen from '../screens/deliveries/DeliveryListScreen';
 import ProjectListScreen from '../screens/projects/ProjectListScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
+import RequesterStackNavigator from './RequesterStackNavigator';
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Drawer = createDrawerNavigator<BottomTabParamList>();
@@ -88,6 +89,21 @@ const DrawerNavigator: React.FC = () => {
               name="speedometer" 
               size={size - 2} 
               color={color} 
+              style={{ marginRight: 8, width: 24, textAlign: 'center' }}
+            />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="Requesters"
+        component={RequesterStackNavigator}
+        options={{
+          title: 'Solicitantes',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons 
+              name="people" 
+              size={size - 2} 
+              color={color}
               style={{ marginRight: 8, width: 24, textAlign: 'center' }}
             />
           ),

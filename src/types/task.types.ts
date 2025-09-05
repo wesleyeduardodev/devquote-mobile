@@ -1,4 +1,5 @@
 import { BaseEntity } from './api.types';
+import { Requester } from './requester.types';
 
 // Task status and types
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
@@ -32,12 +33,6 @@ export interface SubTask extends BaseEntity {
   task?: Task;
 }
 
-export interface Requester extends BaseEntity {
-  id: number;
-  name: string;
-  email: string;
-  phone?: string;
-}
 
 // Create/Update types
 export interface CreateTaskRequest {

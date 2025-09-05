@@ -4,6 +4,7 @@ export * from './auth.types';
 export * from './task.types';
 export * from './delivery.types';
 export * from './project.types';
+export * from './requester.types';
 
 // Navigation types
 export type RootStackParamList = {
@@ -33,9 +34,9 @@ export type RootStackParamList = {
   
   // Requester Stack
   RequesterList: undefined;
-  RequesterDetails: { requesterId: number };
+  RequesterDetails: { id: string | number };
   RequesterCreate: undefined;
-  RequesterEdit: { requesterId: number };
+  RequesterEdit: { id: string | number };
   
   // Profile Stack
   Profile: undefined;
@@ -47,6 +48,7 @@ export type BottomTabParamList = {
   Tasks: undefined;
   Deliveries: undefined;
   Projects: undefined;
+  Requesters: undefined;
   Profile: undefined;
 };
 

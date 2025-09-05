@@ -40,7 +40,8 @@
     "react-native-toast-message": "^2.3.3",
     "yup": "^1.7.0",
     "zustand": "^5.0.8",
-    "expo-linear-gradient": "~14.1.5"
+    "expo-linear-gradient": "~14.1.5",
+    "@react-native-picker/picker": "2.11.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
