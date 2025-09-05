@@ -42,20 +42,29 @@ export const useAuthStore = create<AuthStore>()(
         
         const response = await authService.login(credentials);
         
+        console.log('Login response:', response); // Debug log
+        
+        // Verificar se os tokens existem
+        const accessToken = response.access_token || response.accessToken || response.token;
+        const refreshToken = response.refresh_token || response.refreshToken;
+        
+        if (!accessToken) {
+          throw new Error('Token não recebido da API');
+        }
+        
         // Store tokens in secure storage
-        await storageService.storeTokens(
-          response.access_token,
-          response.refresh_token
-        );
+        await storageService.storeTokens(accessToken, refreshToken);
         
         // Store user data
-        await storageService.storeUserData(response.user);
+        if (response.user) {
+          await storageService.storeUserData(response.user);
+        }
         
         set({
-          user: response.user,
+          user: response.user || response,
           tokens: {
-            accessToken: response.access_token,
-            refreshToken: response.refresh_token,
+            accessToken,
+            refreshToken,
           },
           isAuthenticated: true,
           isLoading: false,

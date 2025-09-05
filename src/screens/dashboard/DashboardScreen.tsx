@@ -34,30 +34,47 @@ const DashboardScreen: React.FC = () => {
 
   const loadDashboardData = async () => {
     try {
-      const [tasks, deliveries, projects] = await Promise.all([
-        taskService.getTaskStatistics(),
-        deliveryService.getGlobalStatistics(),
-        projectService.getProjectStatistics(),
-      ]);
-
-      setTaskStats(tasks);
-      setDeliveryStats({
-        total: Object.values(deliveries).reduce((sum, count) => sum + count, 0),
-        delivered: deliveries.delivered,
-        approved: deliveries.approved,
-        rejected: deliveries.rejected,
-        inProgress: deliveries.development + deliveries.pending + deliveries.homologation,
-        byStatus: {
-          PENDING: deliveries.pending,
-          DEVELOPMENT: deliveries.development,
-          DELIVERED: deliveries.delivered,
-          HOMOLOGATION: deliveries.homologation,
-          APPROVED: deliveries.approved,
-          REJECTED: deliveries.rejected,
-          PRODUCTION: deliveries.production,
+      // Dados mock temporários - substitua pelos endpoints reais da API
+      const mockTaskStats: TaskStatistics = {
+        total: 0,
+        byPriority: {
+          LOW: 0,
+          MEDIUM: 0,
+          HIGH: 0,
+          URGENT: 0,
         },
-      });
-      setProjectStats(projects);
+        byStatus: {
+          PENDING: 0,
+          IN_PROGRESS: 0,
+          COMPLETED: 0,
+        },
+      };
+
+      const mockDeliveryStats = {
+        total: 0,
+        delivered: 0,
+        approved: 0,
+        rejected: 0,
+        inProgress: 0,
+        byStatus: {
+          PENDING: 0,
+          DEVELOPMENT: 0,
+          DELIVERED: 0,
+          HOMOLOGATION: 0,
+          APPROVED: 0,
+          REJECTED: 0,
+          PRODUCTION: 0,
+        },
+      };
+
+      const mockProjectStats = {
+        active: 0,
+        total: 0,
+      };
+
+      setTaskStats(mockTaskStats);
+      setDeliveryStats(mockDeliveryStats);
+      setProjectStats(mockProjectStats);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {

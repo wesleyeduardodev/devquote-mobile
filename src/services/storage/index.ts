@@ -54,12 +54,21 @@ export class StorageService {
   }
   
   // Auth-specific methods
-  async storeTokens(accessToken: string, refreshToken: string): Promise<void> {
+  async storeTokens(accessToken: string, refreshToken?: string): Promise<void> {
     try {
-      await AsyncStorage.multiSet([
-        [STORAGE_KEYS.ACCESS_TOKEN, accessToken],
-        [STORAGE_KEYS.REFRESH_TOKEN, refreshToken],
-      ]);
+      const itemsToSet: [string, string][] = [];
+      
+      if (accessToken) {
+        itemsToSet.push([STORAGE_KEYS.ACCESS_TOKEN, accessToken]);
+      }
+      
+      if (refreshToken) {
+        itemsToSet.push([STORAGE_KEYS.REFRESH_TOKEN, refreshToken]);
+      }
+      
+      if (itemsToSet.length > 0) {
+        await AsyncStorage.multiSet(itemsToSet);
+      }
     } catch (error) {
       console.error('Error storing tokens:', error);
       throw new Error('Failed to store tokens');

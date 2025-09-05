@@ -1,6 +1,6 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: __DEV__ ? 'http://localhost:8080/api' : 'https://your-production-api.com/api',
+  BASE_URL: __DEV__ ? 'https://a99de7f1676d.ngrok-free.app/api' : 'https://your-production-api.com/api',
   TIMEOUT: 10000,
   RETRY_ATTEMPTS: 3,
 } as const;
@@ -20,6 +20,7 @@ export const COLORS = {
   success: '#10b981',
   warning: '#f59e0b',
   error: '#ef4444',
+  danger: '#dc2626',
   info: '#3b82f6',
   
   // Grayscale
