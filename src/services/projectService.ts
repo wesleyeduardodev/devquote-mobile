@@ -1,10 +1,10 @@
-import { apiClient } from './client';
-import { PaginatedResponse, QueryParams } from '../../types/api.types';
+import { apiClient } from './api/client';
+import { PaginatedResponse, QueryParams } from '../types/api.types';
 import { 
     Project, 
     CreateProjectData, 
     UpdateProjectData 
-} from '../../types/project.types';
+} from '../types/project.types';
 
 class ProjectService {
     private readonly baseURL = '/projects';

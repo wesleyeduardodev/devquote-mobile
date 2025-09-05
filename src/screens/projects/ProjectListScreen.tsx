@@ -1,205 +1,208 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  RefreshControl,
+  FlatList,
   TouchableOpacity,
+  RefreshControl,
   Alert,
+  TextInput,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { FAB, Portal, Provider } from 'react-native-paper';
 
-import { Card, LoadingSpinner } from '../../components/ui';
-import { COLORS, SPACING, TYPOGRAPHY } from '../../constants';
-import { Project } from '../../types';
-import { projectService } from '../../services/api';
+import { projectService } from '../../services/projectService';
+import { Project } from '../../types/project.types';
+import { LoadingSpinner, Card } from '../../components/ui';
+import { COLORS, SPACING } from '../../constants';
+import { showToast } from '../../utils/toast';
 
 const ProjectListScreen: React.FC = () => {
+  const navigation = useNavigation<any>();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
 
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
-      const response = await projectService.getAllProjects({
+      const response = await projectService.getAll({
         page: 0,
-        size: 50,
-        sort: 'name,asc',
+        size: 100,
+        sort: [{ field: 'name', direction: 'asc' }],
       });
-
-      if (response.success && response.data) {
-        setProjects(response.data.content);
-      } else {
-        Alert.alert('Erro', 'Não foi possível carregar os projetos');
-      }
+      setProjects(response.content);
+      setFilteredProjects(response.content);
     } catch (error) {
+      showToast('error', 'Erro ao carregar projetos');
       console.error('Error loading projects:', error);
-      Alert.alert('Erro', 'Erro ao carregar projetos');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    loadProjects();
   }, []);
 
-  const onRefresh = () => {
+  useFocusEffect(
+    useCallback(() => {
+      loadProjects();
+    }, [loadProjects])
+  );
+
+  useEffect(() => {
+    if (searchQuery) {
+      const filtered = projects.filter(
+        (project) =>
+          project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          project.repositoryUrl?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredProjects(filtered);
+    } else {
+      setFilteredProjects(projects);
+    }
+  }, [searchQuery, projects]);
+
+  const handleRefresh = () => {
     setRefreshing(true);
     loadProjects();
   };
 
-  const getStatusColor = (active: boolean): string => {
-    return active ? COLORS.success : COLORS.gray400;
+  const handleEdit = (project: Project) => {
+    navigation.navigate('ProjectEdit', { id: project.id });
   };
 
-  const getStatusLabel = (active: boolean): string => {
-    return active ? 'Ativo' : 'Inativo';
+  const handleDelete = (project: Project) => {
+    Alert.alert(
+      'Confirmar Exclusão',
+      `Deseja realmente excluir o projeto "${project.name}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await projectService.delete(project.id);
+              showToast('success', 'Projeto excluído com sucesso');
+              loadProjects();
+            } catch (error) {
+              showToast('error', 'Erro ao excluir projeto');
+              console.error('Error deleting project:', error);
+            }
+          },
+        },
+      ]
+    );
   };
 
-  const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+  const renderProject = ({ item }: { item: Project }) => {
+    return (
+      <Card style={styles.projectCard}>
+        <TouchableOpacity
+          onPress={() => handleEdit(item)}
+          style={styles.projectContent}
+          activeOpacity={0.7}
+        >
+          <View style={styles.projectHeader}>
+            <View style={styles.projectInfo}>
+              <Text style={styles.projectName}>{item.name}</Text>
+              {item.repositoryUrl && (
+                <View style={styles.projectDetails}>
+                  <Ionicons name="link-outline" size={14} color={COLORS.gray600} />
+                  <Text style={styles.repositoryUrl} numberOfLines={1}>
+                    {item.repositoryUrl}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.cardActions}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleEdit(item)}
+          >
+            <MaterialIcons name="edit" size={20} color={COLORS.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleDelete(item)}
+          >
+            <MaterialIcons name="delete" size={20} color={COLORS.danger} />
+          </TouchableOpacity>
+        </View>
+      </Card>
+    );
   };
+
+  const renderEmpty = () => (
+    <View style={styles.emptyContainer}>
+      <Ionicons name="folder-outline" size={64} color={COLORS.gray400} />
+      <Text style={styles.emptyText}>Nenhum projeto encontrado</Text>
+      <Text style={styles.emptySubtext}>
+        {searchQuery
+          ? 'Tente buscar por outro termo'
+          : 'Adicione um novo projeto para começar'}
+      </Text>
+    </View>
+  );
 
   if (loading) {
-    return (
-      <View style={styles.container}>
-        <LoadingSpinner
-          size="large"
-          text="Carregando projetos..."
-          testID="project-loading"
-        />
-      </View>
-    );
+    return <LoadingSpinner overlay size="large" text="Carregando projetos..." />;
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={[COLORS.primary]}
-          tintColor={COLORS.primary}
-        />
-      }
-      testID="project-scroll"
-    >
-      <View style={styles.header}>
-        <Text style={styles.title}>Projetos</Text>
-        <Text style={styles.subtitle}>
-          {projects.length} {projects.length === 1 ? 'projeto encontrado' : 'projetos encontrados'}
-        </Text>
-      </View>
-
-      {projects.length === 0 ? (
-        <Card variant="elevated" style={styles.emptyCard}>
-          <View style={styles.emptyContainer}>
-            <Ionicons name="folder-outline" size={48} color={COLORS.gray400} />
-            <Text style={styles.emptyTitle}>Nenhum projeto encontrado</Text>
-            <Text style={styles.emptySubtitle}>
-              Os projetos aparecerão aqui quando forem criados
-            </Text>
+    <Provider>
+      <View style={styles.container}>
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBar}>
+            <Ionicons name="search" size={20} color={COLORS.gray500} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar por nome ou URL do repositório..."
+              placeholderTextColor={COLORS.gray400}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery ? (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={20} color={COLORS.gray500} />
+              </TouchableOpacity>
+            ) : null}
           </View>
-        </Card>
-      ) : (
-        <View style={styles.projectList}>
-          {projects.map((project) => (
-            <TouchableOpacity
-              key={project.id}
-              activeOpacity={0.7}
-              onPress={() => {
-                Alert.alert('Info', `Projeto: ${project.name}`);
-              }}
-            >
-              <Card variant="elevated" style={styles.projectCard}>
-                <View style={styles.projectHeader}>
-                  <View style={styles.projectTitleContainer}>
-                    <Text style={styles.projectName} numberOfLines={2}>
-                      {project.name}
-                    </Text>
-                    <View style={[
-                      styles.statusBadge,
-                      { backgroundColor: getStatusColor(project.active) + '20' }
-                    ]}>
-                      <View style={[
-                        styles.statusDot,
-                        { backgroundColor: getStatusColor(project.active) }
-                      ]} />
-                      <Text style={[
-                        styles.statusText,
-                        { color: getStatusColor(project.active) }
-                      ]}>
-                        {getStatusLabel(project.active)}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                {project.description && (
-                  <Text style={styles.projectDescription} numberOfLines={3}>
-                    {project.description}
-                  </Text>
-                )}
-
-                {project.repositoryUrl && (
-                  <View style={styles.repositoryContainer}>
-                    <Ionicons name="logo-github" size={16} color={COLORS.gray600} />
-                    <Text style={styles.repositoryText} numberOfLines={1}>
-                      {project.repositoryUrl.replace(/^https?:\/\//, '')}
-                    </Text>
-                  </View>
-                )}
-
-                <View style={styles.projectMeta}>
-                  <View style={styles.metaItem}>
-                    <Ionicons name="calendar-outline" size={16} color={COLORS.gray500} />
-                    <Text style={styles.metaText}>
-                      Criado em {formatDate(project.createdAt || new Date().toISOString())}
-                    </Text>
-                  </View>
-
-                  {project.updatedAt && project.updatedAt !== project.createdAt && (
-                    <View style={styles.metaItem}>
-                      <Ionicons name="refresh-outline" size={16} color={COLORS.gray500} />
-                      <Text style={styles.metaText}>
-                        Atualizado em {formatDate(project.updatedAt)}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                <View style={styles.projectStats}>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statNumber}>
-                      0
-                    </Text>
-                    <Text style={styles.statLabel}>
-                      Tarefas
-                    </Text>
-                  </View>
-
-                  <View style={styles.statDivider} />
-
-                  <View style={styles.statItem}>
-                    <Text style={styles.statNumber}>
-                      0
-                    </Text>
-                    <Text style={styles.statLabel}>
-                      Entregas
-                    </Text>
-                  </View>
-                </View>
-              </Card>
-            </TouchableOpacity>
-          ))}
         </View>
-      )}
-    </ScrollView>
+
+        {/* List */}
+        <FlatList
+          data={filteredProjects}
+          renderItem={renderProject}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={renderEmpty}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={[COLORS.primary]}
+            />
+          }
+        />
+
+        {/* FAB */}
+        <Portal>
+          <FAB
+            style={styles.fab}
+            icon="plus"
+            onPress={() => navigation.navigate('ProjectCreate')}
+            color={COLORS.white}
+          />
+        </Portal>
+      </View>
+    </Provider>
   );
 };
 
@@ -208,137 +211,101 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.gray50,
   },
-  content: {
-    padding: SPACING.lg,
+  searchContainer: {
+    padding: SPACING.md,
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray200,
   },
-  header: {
-    marginBottom: SPACING.xl,
-  },
-  title: {
-    fontSize: TYPOGRAPHY.fontSize.heading.h2,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-    color: COLORS.gray900,
-    marginBottom: SPACING.xs,
-  },
-  subtitle: {
-    fontSize: TYPOGRAPHY.fontSize.base,
-    color: COLORS.gray600,
-  },
-  emptyCard: {
-    marginTop: SPACING.xl,
-  },
-  emptyContainer: {
+  searchBar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.xl,
+    backgroundColor: COLORS.gray50,
+    borderRadius: 10,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
   },
-  emptyTitle: {
-    fontSize: TYPOGRAPHY.fontSize.lg,
-    fontWeight: TYPOGRAPHY.fontWeight.semibold,
+  searchInput: {
+    flex: 1,
+    marginLeft: SPACING.sm,
+    fontSize: 16,
     color: COLORS.gray900,
-    marginTop: SPACING.md,
-    marginBottom: SPACING.xs,
   },
-  emptySubtitle: {
-    fontSize: TYPOGRAPHY.fontSize.base,
-    color: COLORS.gray600,
-    textAlign: 'center',
-  },
-  projectList: {
-    gap: SPACING.md,
+  listContent: {
+    padding: SPACING.md,
+    paddingBottom: 80,
   },
   projectCard: {
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.md,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 0,
+    elevation: 2,
+  },
+  projectContent: {
+    padding: SPACING.md,
   },
   projectHeader: {
-    marginBottom: SPACING.sm,
-  },
-  projectTitleContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: SPACING.xs,
+  },
+  projectInfo: {
+    flex: 1,
   },
   projectName: {
-    fontSize: TYPOGRAPHY.fontSize.lg,
-    fontWeight: TYPOGRAPHY.fontWeight.semibold,
+    fontSize: 18,
+    fontWeight: '600',
     color: COLORS.gray900,
-    flex: 1,
-    marginRight: SPACING.sm,
+    marginBottom: 4,
   },
-  statusBadge: {
+  projectDetails: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 4,
+  },
+  repositoryUrl: {
+    fontSize: 14,
+    color: COLORS.gray600,
+    marginLeft: 6,
+    flex: 1,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    borderTopWidth: 1,
+    borderTopColor: COLORS.gray100,
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
-    borderRadius: 12,
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: SPACING.xs,
+  actionButton: {
+    padding: SPACING.sm,
+    marginLeft: SPACING.sm,
   },
-  statusText: {
-    fontSize: TYPOGRAPHY.fontSize.xs,
-    fontWeight: TYPOGRAPHY.fontWeight.medium,
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
   },
-  projectDescription: {
-    fontSize: TYPOGRAPHY.fontSize.base,
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
     color: COLORS.gray700,
-    lineHeight: 20,
-    marginBottom: SPACING.md,
+    marginTop: SPACING.md,
   },
-  repositoryContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  repositoryText: {
-    fontSize: TYPOGRAPHY.fontSize.sm,
-    color: COLORS.gray600,
-    marginLeft: SPACING.xs,
-    flex: 1,
-  },
-  projectMeta: {
-    marginBottom: SPACING.md,
-    gap: SPACING.xs,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  metaText: {
-    fontSize: TYPOGRAPHY.fontSize.sm,
-    color: COLORS.gray600,
-    marginLeft: SPACING.xs,
-  },
-  projectStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingTop: SPACING.md,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.gray200,
-  },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statNumber: {
-    fontSize: TYPOGRAPHY.fontSize.heading.h3,
-    fontWeight: TYPOGRAPHY.fontWeight.bold,
-    color: COLORS.primary,
-    marginBottom: SPACING.xs,
-  },
-  statLabel: {
-    fontSize: TYPOGRAPHY.fontSize.xs,
-    color: COLORS.gray600,
+  emptySubtext: {
+    fontSize: 14,
+    color: COLORS.gray500,
+    marginTop: SPACING.xs,
     textAlign: 'center',
   },
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: COLORS.gray200,
+  fab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 0,
+    backgroundColor: COLORS.primary,
   },
 });
 

@@ -30,7 +30,7 @@ export type RootStackParamList = {
   ProjectList: undefined;
   ProjectDetails: { projectId: number };
   ProjectCreate: undefined;
-  ProjectEdit: { projectId: number };
+  ProjectEdit: { id: string | number };
   
   // Requester Stack
   RequesterList: undefined;

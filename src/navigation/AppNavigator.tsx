@@ -17,9 +17,9 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import DashboardScreen from '../screens/dashboard/DashboardScreen';
 import TaskListScreen from '../screens/tasks/TaskListScreen';
 import DeliveryListScreen from '../screens/deliveries/DeliveryListScreen';
-import ProjectListScreen from '../screens/projects/ProjectListScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import RequesterStackNavigator from './RequesterStackNavigator';
+import ProjectStackNavigator from './ProjectStackNavigator';
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Drawer = createDrawerNavigator<BottomTabParamList>();
@@ -110,6 +110,21 @@ const DrawerNavigator: React.FC = () => {
         }}
       />
       <Drawer.Screen
+        name="Projects"
+        component={ProjectStackNavigator}
+        options={{
+          title: 'Projetos',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons 
+              name="folder" 
+              size={size - 2} 
+              color={color}
+              style={{ marginRight: 8, width: 24, textAlign: 'center' }}
+            />
+          ),
+        }}
+      />
+      <Drawer.Screen
         name="Tasks"
         component={TaskListScreen}
         options={{
@@ -133,21 +148,6 @@ const DrawerNavigator: React.FC = () => {
             <MaterialIcons 
               name="local-shipping" 
               size={size - 2} 
-              color={color}
-              style={{ marginRight: 8, width: 24, textAlign: 'center' }}
-            />
-          ),
-        }}
-      />
-      <Drawer.Screen
-        name="Projects"
-        component={ProjectListScreen}
-        options={{
-          title: 'Projetos',
-          drawerIcon: ({ color, size }) => (
-            <FontAwesome5 
-              name="project-diagram" 
-              size={size - 4} 
               color={color}
               style={{ marginRight: 8, width: 24, textAlign: 'center' }}
             />
