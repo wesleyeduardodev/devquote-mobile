@@ -88,18 +88,8 @@ const RequesterCreateScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={COLORS.gray900} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Novo Solicitante</Text>
-          <View style={{ width: 24 }} />
-        </View>
-
         {/* Form */}
         <Card style={styles.formCard}>
-          <Text style={styles.sectionTitle}>Informações do Solicitante</Text>
           
           <Controller
             control={control}
