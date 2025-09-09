@@ -284,6 +284,24 @@ const TaskCreateScreen: React.FC = () => {
 
         {/* Form Card */}
         <Card style={styles.formCard}>
+          {/* Solicitante - Primeiro campo */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Solicitante *</Text>
+            <TouchableOpacity 
+              style={[styles.selectButton, errors.requesterId && styles.selectButtonError]}
+              onPress={() => setShowRequesterDropdown(true)}
+            >
+              <Ionicons name="person-outline" size={20} color={COLORS.primary} />
+              <Text style={[styles.selectButtonText, selectedRequesterId === 0 && styles.selectButtonPlaceholder]}>
+                {getSelectedRequesterName()}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color={COLORS.gray400} />
+            </TouchableOpacity>
+            {errors.requesterId && (
+              <Text style={styles.errorText}>{errors.requesterId.message}</Text>
+            )}
+          </View>
+
           {/* Código */}
           <View style={styles.fieldContainer}>
             <Controller
@@ -303,6 +321,21 @@ const TaskCreateScreen: React.FC = () => {
                 />
               )}
             />
+          </View>
+
+          {/* Prioridade */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Prioridade *</Text>
+            <TouchableOpacity 
+              style={styles.selectButton}
+              onPress={() => setShowPriorityDropdown(true)}
+            >
+              <Text style={styles.priorityIcon}>{getPriorityDisplay(selectedPriority).icon}</Text>
+              <Text style={[styles.selectButtonText, { color: getPriorityDisplay(selectedPriority).color }]}>
+                {getPriorityDisplay(selectedPriority).label}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color={COLORS.gray400} />
+            </TouchableOpacity>
           </View>
 
           {/* Título */}
@@ -326,62 +359,6 @@ const TaskCreateScreen: React.FC = () => {
             />
           </View>
 
-          {/* Descrição */}
-          <View style={styles.fieldContainer}>
-            <Controller
-              control={control}
-              name="description"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <Input
-                  label="Descrição"
-                  value={value || ''}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  error={errors.description?.message}
-                  leftIcon={<Ionicons name="text-outline" size={20} color={COLORS.primary} />}
-                  placeholder="Descreva brevemente a tarefa"
-                  multiline
-                  numberOfLines={3}
-                  returnKeyType="next"
-                  style={[styles.input, styles.textArea]}
-                />
-              )}
-            />
-          </View>
-
-          {/* Solicitante */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Solicitante *</Text>
-            <TouchableOpacity 
-              style={[styles.selectButton, errors.requesterId && styles.selectButtonError]}
-              onPress={() => setShowRequesterDropdown(true)}
-            >
-              <Ionicons name="person-outline" size={20} color={COLORS.primary} />
-              <Text style={[styles.selectButtonText, selectedRequesterId === 0 && styles.selectButtonPlaceholder]}>
-                {getSelectedRequesterName()}
-              </Text>
-              <Ionicons name="chevron-down" size={20} color={COLORS.gray400} />
-            </TouchableOpacity>
-            {errors.requesterId && (
-              <Text style={styles.errorText}>{errors.requesterId.message}</Text>
-            )}
-          </View>
-
-          {/* Prioridade */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Prioridade *</Text>
-            <TouchableOpacity 
-              style={styles.selectButton}
-              onPress={() => setShowPriorityDropdown(true)}
-            >
-              <Text style={styles.priorityIcon}>{getPriorityDisplay(selectedPriority).icon}</Text>
-              <Text style={[styles.selectButtonText, { color: getPriorityDisplay(selectedPriority).color }]}>
-                {getPriorityDisplay(selectedPriority).label}
-              </Text>
-              <Ionicons name="chevron-down" size={20} color={COLORS.gray400} />
-            </TouchableOpacity>
-          </View>
-
           {/* Tipo de Tarefa */}
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>Tipo de Tarefa</Text>
@@ -396,6 +373,8 @@ const TaskCreateScreen: React.FC = () => {
               <Ionicons name="chevron-down" size={20} color={COLORS.gray400} />
             </TouchableOpacity>
           </View>
+
+
 
           {/* Módulo do Sistema */}
           <View style={styles.fieldContainer}>
@@ -434,6 +413,29 @@ const TaskCreateScreen: React.FC = () => {
                   placeholder="Ex: Produção, Homologação, Local"
                   returnKeyType="next"
                   style={styles.input}
+                />
+              )}
+            />
+          </View>
+
+          {/* Descrição */}
+          <View style={styles.fieldContainer}>
+            <Controller
+              control={control}
+              name="description"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="Descrição"
+                  value={value || ''}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.description?.message}
+                  leftIcon={<Ionicons name="text-outline" size={20} color={COLORS.primary} />}
+                  placeholder="Descreva brevemente a tarefa"
+                  multiline
+                  numberOfLines={3}
+                  returnKeyType="next"
+                  style={[styles.input, styles.textArea]}
                 />
               )}
             />
