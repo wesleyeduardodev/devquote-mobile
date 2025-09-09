@@ -52,6 +52,7 @@ export interface BaseFilters {
 export interface QueryParams extends BaseFilters {
   search?: string;
   status?: string | string[];
+  filters?: Record<string, any>;
   [key: string]: any;
 }
 

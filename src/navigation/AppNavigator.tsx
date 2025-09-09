@@ -15,11 +15,11 @@ import CustomDrawerContent from '../components/navigation/CustomDrawerContent';
 // Import screens (to be created)
 import LoginScreen from '../screens/auth/LoginScreen';
 import DashboardScreen from '../screens/dashboard/DashboardScreen';
-import TaskListScreen from '../screens/tasks/TaskListScreen';
 import DeliveryListScreen from '../screens/deliveries/DeliveryListScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import RequesterStackNavigator from './RequesterStackNavigator';
 import ProjectStackNavigator from './ProjectStackNavigator';
+import TaskStackNavigator from './TaskStackNavigator';
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Drawer = createDrawerNavigator<BottomTabParamList>();
@@ -126,7 +126,7 @@ const DrawerNavigator: React.FC = () => {
       />
       <Drawer.Screen
         name="Tasks"
-        component={TaskListScreen}
+        component={TaskStackNavigator}
         options={{
           title: 'Tarefas',
           drawerIcon: ({ color, size }) => (

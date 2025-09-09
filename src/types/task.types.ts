@@ -1,129 +1,81 @@
 import { BaseEntity } from './api.types';
-import { Requester } from './requester.types';
 
-// Task status and types
+// Prioridade da tarefa (seguindo padrão do frontend)
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-export type TaskType = 'BUG' | 'ENHANCEMENT' | 'NEW_FEATURE';
 
-// Task interfaces
+// Tipo de tarefa (seguindo padrão do frontend)
+export type TaskType = 'BUG' | 'ENHANCEMENT' | 'NEW_FEATURE' | '';
+
+// Interface principal para Task (completa seguindo padrão do frontend)
 export interface Task extends BaseEntity {
-  id: number;
-  title: string;
-  description?: string;
-  code: string;
-  priority: TaskPriority;
-  taskType: TaskType;
-  systemModule?: string;
-  amount?: number;
-  link?: string;
-  meetingLink?: string;
-  requester?: Requester;
-  requesterId: number;
-  requesterName?: string;
-  subTasks?: SubTask[];
-  deliveries?: any[]; // Will be typed with delivery types
+    id: number;
+    code: string;
+    title: string;
+    description?: string;
+    priority?: TaskPriority;
+    taskType?: TaskType;
+    requesterId: number | string;
+    requesterName?: string;
+    systemModule?: string;
+    serverOrigin?: string;
+    meetingLink?: string;
+    notes?: string;
+    link?: string;
+    subTasks?: SubTask[];
 }
 
+// Subtarefa (simplificada)
 export interface SubTask extends BaseEntity {
-  id: number;
-  title: string;
-  description?: string;
-  completed: boolean;
-  taskId: number;
-  task?: Task;
+    id: number;
+    taskId: number;
+    title: string;
+    description?: string;
+    amount: number;
 }
 
-
-// Create/Update types
-export interface CreateTaskRequest {
-  title: string;
-  description?: string;
-  code: string;
-  priority: TaskPriority;
-  taskType: TaskType;
-  systemModule?: string;
-  amount?: number;
-  link?: string;
-  meetingLink?: string;
-  requesterId: number;
-  subTasks?: CreateSubTaskRequest[];
+// Tipo para criação de tarefa (completo seguindo padrão do frontend)
+export interface CreateTaskData {
+    code: string;
+    title: string;
+    description?: string;
+    priority?: TaskPriority;
+    taskType?: TaskType;
+    requesterId: number | string;
+    systemModule?: string;
+    serverOrigin?: string;
+    meetingLink?: string;
+    notes?: string;
+    link?: string;
+    subTasks?: CreateSubTaskData[];
 }
 
-export interface UpdateTaskRequest extends Partial<CreateTaskRequest> {
-  id: number;
+// Tipo para criação de subtarefa
+export interface CreateSubTaskData {
+    title: string;
+    description?: string;
+    amount: number;
 }
 
-export interface CreateSubTaskRequest {
-  title: string;
-  description?: string;
-  completed?: boolean;
+// Tipo para atualização de tarefa (completo seguindo padrão do frontend)
+export interface UpdateTaskData {
+    code?: string;
+    title: string;
+    description?: string;
+    priority?: TaskPriority;
+    taskType?: TaskType;
+    requesterId: number | string;
+    systemModule?: string;
+    serverOrigin?: string;
+    meetingLink?: string;
+    notes?: string;
+    link?: string;
+    subTasks?: UpdateSubTaskData[];
 }
 
-export interface UpdateSubTaskRequest extends Partial<CreateSubTaskRequest> {
-  id: number;
+// Tipo para atualização de subtarefa
+export interface UpdateSubTaskData {
+    id?: number; // Para identificar subtarefa existente
+    title: string;
+    description?: string;
+    amount: number;
 }
-
-// Filter types
-export interface TaskFilters {
-  id?: number;
-  title?: string;
-  code?: string;
-  priority?: TaskPriority;
-  taskType?: TaskType;
-  systemModule?: string;
-  requesterName?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-// Response types
-export interface TaskResponse extends Task {
-  subTasksCount?: number;
-  completedSubTasks?: number;
-  pendingSubTasks?: number;
-}
-
-// Statistics
-export interface TaskStatistics {
-  total: number;
-  byPriority: Record<TaskPriority, number>;
-  byType: Record<TaskType, number>;
-  completed: number;
-  pending: number;
-}
-
-// Form data
-export interface TaskFormData {
-  title: string;
-  description: string;
-  code: string;
-  priority: TaskPriority;
-  taskType: TaskType;
-  systemModule: string;
-  amount: string; // String for form input
-  link: string;
-  meetingLink: string;
-  requesterId: number | null;
-  subTasks: SubTaskFormData[];
-}
-
-export interface SubTaskFormData {
-  id?: number;
-  title: string;
-  description: string;
-  completed: boolean;
-}
-
-// Labels for display
-export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
-  LOW: '🟢 Baixa',
-  MEDIUM: '🟡 Média',
-  HIGH: '🟠 Alta',
-  URGENT: '🔴 Urgente',
-};
-
-export const TASK_TYPE_LABELS: Record<TaskType, string> = {
-  BUG: '🐛 Bug',
-  ENHANCEMENT: '📈 Melhoria',
-  NEW_FEATURE: '✨ Nova Funcionalidade',
-};

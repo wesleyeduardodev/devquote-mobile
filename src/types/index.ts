@@ -18,7 +18,7 @@ export type RootStackParamList = {
   TaskList: undefined;
   TaskDetails: { taskId: number };
   TaskCreate: undefined;
-  TaskEdit: { taskId: number };
+  TaskEdit: { id: string | number };
   
   // Delivery Stack
   DeliveryList: undefined;
