@@ -5,6 +5,7 @@ import {
     CreateTaskData, 
     UpdateTaskData 
 } from '../types/task.types';
+import * as DocumentPicker from 'expo-document-picker';
 
 class TaskService {
     private readonly baseURL = '/tasks';
@@ -52,6 +53,31 @@ class TaskService {
     // Criar nova tarefa
     async create(data: CreateTaskData): Promise<Task> {
         const response = await apiClient.post<Task>(this.baseURL, data);
+        return response.data;
+    }
+
+    // Criar nova tarefa com arquivos
+    async createWithFiles(data: CreateTaskData, files: DocumentPicker.DocumentPickerAsset[]): Promise<Task> {
+        const formData = new FormData();
+        
+        // Adiciona os dados da tarefa como objeto que simula Blob (React Native não suporta Blob nativo)
+        formData.append('task', {
+            string: JSON.stringify(data),
+            type: 'application/json'
+        } as any);
+        
+        // Adiciona os arquivos como parâmetros separados (igual ao frontend)
+        files.forEach((file, index) => {
+            formData.append('files', {
+                uri: file.uri,
+                type: file.mimeType || 'application/octet-stream',
+                name: file.name || `file_${index}`,
+            } as any);
+        });
+
+        // Usa o mesmo endpoint que o frontend
+        // NÃO definir Content-Type - deixar o Axios definir automaticamente com boundary correto
+        const response = await apiClient.post<Task>(`${this.baseURL}/full/with-files`, formData);
         return response.data;
     }
 

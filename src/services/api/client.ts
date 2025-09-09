@@ -30,6 +30,11 @@ axiosInstance.interceptors.request.use(
       console.warn('Failed to get access token from storage:', error);
     }
     
+    // Se for FormData, remover o Content-Type para deixar o Axios definir automaticamente
+    if (config.data instanceof FormData && config.headers) {
+      delete config.headers['Content-Type'];
+    }
+    
     // Log requests in development
     if (__DEV__) {
       console.log(`📤 API Request: ${config.method?.toUpperCase()} ${config.url}`, {

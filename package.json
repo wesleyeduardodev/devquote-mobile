@@ -17,6 +17,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-picker/picker": "2.11.1",
     "@react-navigation/bottom-tabs": "^7.4.7",
     "@react-navigation/drawer": "^7.5.8",
     "@react-navigation/material-top-tabs": "^7.3.7",
@@ -26,6 +27,7 @@
     "axios": "^1.11.0",
     "date-fns": "^4.1.0",
     "expo": "~53.0.22",
+    "expo-linear-gradient": "~14.1.5",
     "expo-status-bar": "~2.2.3",
     "react": "19.0.0",
     "react-hook-form": "^7.62.0",
@@ -40,8 +42,7 @@
     "react-native-toast-message": "^2.3.3",
     "yup": "^1.7.0",
     "zustand": "^5.0.8",
-    "expo-linear-gradient": "~14.1.5",
-    "@react-native-picker/picker": "2.11.1"
+    "expo-document-picker": "~13.1.6"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

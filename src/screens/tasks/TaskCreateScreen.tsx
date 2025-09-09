@@ -21,9 +21,10 @@ import { taskService } from '../../services/taskService';
 import { requesterService } from '../../services/requesterService';
 import { CreateTaskData, TaskPriority, TaskType, CreateSubTaskData } from '../../types/task.types';
 import { Requester } from '../../types/requester.types';
-import { Input, Button, Card, LoadingSpinner, SelectModal } from '../../components/ui';
+import { Input, Button, Card, LoadingSpinner, SelectModal, FilePicker } from '../../components/ui';
 import { COLORS, SPACING } from '../../constants';
 import { showToast } from '../../utils/toast';
+import * as DocumentPicker from 'expo-document-picker';
 
 const schema = yup.object().shape({
   code: yup
@@ -112,6 +113,7 @@ const TaskCreateScreen: React.FC = () => {
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
   const [showTaskTypeDropdown, setShowTaskTypeDropdown] = useState(false);
   const [totalSubTasksValue, setTotalSubTasksValue] = useState(0);
+  const [selectedFiles, setSelectedFiles] = useState<DocumentPicker.DocumentPickerAsset[]>([]);
 
   const {
     control,
@@ -240,8 +242,15 @@ const TaskCreateScreen: React.FC = () => {
         subTasks: data.hasSubTasks ? data.subTasks : undefined,
       };
 
-      await taskService.create(createData);
-      showToast('success', 'Tarefa criada com sucesso!');
+      // Se houver arquivos, usar a API com anexos
+      if (selectedFiles.length > 0) {
+        await taskService.createWithFiles(createData, selectedFiles);
+        showToast('success', `Tarefa criada com ${selectedFiles.length} arquivo(s) anexado(s)!`);
+      } else {
+        await taskService.create(createData);
+        showToast('success', 'Tarefa criada com sucesso!');
+      }
+      
       navigation.goBack();
     } catch (error: any) {
       showToast('error', 'Erro ao criar tarefa');
@@ -549,6 +558,25 @@ const TaskCreateScreen: React.FC = () => {
               />
             </View>
           )}
+        </Card>
+
+        {/* Seção de Anexos */}
+        <Card style={styles.attachmentsCard}>
+          <View style={styles.attachmentsHeader}>
+            <Ionicons name="attach" size={24} color={COLORS.primary} />
+            <Text style={styles.attachmentsTitle}>Anexos</Text>
+            <Text style={styles.attachmentsSubtitle}>
+              Você pode adicionar arquivos que serão anexados junto com a criação da tarefa
+            </Text>
+          </View>
+          
+          <FilePicker
+            files={selectedFiles}
+            onFilesChange={setSelectedFiles}
+            maxFiles={10}
+            maxFileSize={10}
+            disabled={loading}
+          />
         </Card>
 
         {/* Seção de Subtarefas */}
@@ -912,6 +940,28 @@ const styles = StyleSheet.create({
   },
   addSubTaskButton: {
     marginTop: SPACING.md,
+  },
+
+  // Attachments styles
+  attachmentsCard: {
+    margin: SPACING.md,
+    padding: SPACING.lg,
+  },
+  attachmentsHeader: {
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
+  attachmentsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.gray900,
+    marginTop: SPACING.sm,
+  },
+  attachmentsSubtitle: {
+    fontSize: 14,
+    color: COLORS.gray600,
+    textAlign: 'center',
+    marginTop: SPACING.xs,
   },
 });
 
