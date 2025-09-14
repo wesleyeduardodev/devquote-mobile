@@ -54,6 +54,7 @@ export interface CreateSubTaskData {
     title: string;
     description?: string;
     amount: number;
+    taskId?: number | null;
 }
 
 // Tipo para atualização de tarefa (completo seguindo padrão do frontend)

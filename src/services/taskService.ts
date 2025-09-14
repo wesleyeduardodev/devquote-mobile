@@ -52,7 +52,7 @@ class TaskService {
 
     // Criar nova tarefa
     async create(data: CreateTaskData): Promise<Task> {
-        const response = await apiClient.post<Task>(this.baseURL, data);
+        const response = await apiClient.post<Task>(`${this.baseURL}/full`, data);
         return response.data;
     }
 

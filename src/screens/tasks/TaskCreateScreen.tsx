@@ -266,7 +266,11 @@ const TaskCreateScreen: React.FC = () => {
         link: data.link,
         hasSubTasks: data.hasSubTasks,
         amount: data.hasSubTasks ? undefined : (data.amount || 0),
-        subTasks: data.hasSubTasks ? data.subTasks : undefined,
+        subTasks: data.hasSubTasks ? (data.subTasks || []).map((subTask: any) => ({
+          ...subTask,
+          amount: parseFloat(subTask.amount?.toString() || '0'),
+          taskId: null, // Para criação de nova tarefa
+        })) : undefined,
       };
 
       // Se houver arquivos, usar a API com anexos
