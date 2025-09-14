@@ -30,11 +30,10 @@ const schema = yup.object().shape({
   code: yup
     .string()
     .required('Código é obrigatório')
-    .max(50, 'Código deve ter no máximo 50 caracteres'),
+    .max(100, 'Código deve ter no máximo 100 caracteres'),
   title: yup
     .string()
     .required('Título é obrigatório')
-    .min(3, 'Título deve ter pelo menos 3 caracteres')
     .max(200, 'Título deve ter no máximo 200 caracteres'),
   description: yup
     .string()
@@ -44,8 +43,12 @@ const schema = yup.object().shape({
     .required('Solicitante é obrigatório'),
   priority: yup
     .string()
-    .required('Prioridade é obrigatória'),
-  taskType: yup.string().optional(),
+    .required('Prioridade é obrigatória')
+    .max(20, 'Prioridade deve ter no máximo 20 caracteres'),
+  taskType: yup
+    .string()
+    .optional()
+    .max(50, 'Tipo de tarefa deve ter no máximo 50 caracteres'),
   systemModule: yup
     .string()
     .optional()
@@ -63,7 +66,7 @@ const schema = yup.object().shape({
     .string()
     .optional()
     .url('Link da tarefa deve ser uma URL válida')
-    .max(500, 'Link deve ter no máximo 500 caracteres'),
+    .max(200, 'Link deve ter no máximo 200 caracteres'),
   amount: yup
     .number()
     .optional()
@@ -340,6 +343,7 @@ const TaskCreateScreen: React.FC = () => {
                   error={errors.code?.message}
                   leftIcon={<Ionicons name="pricetag-outline" size={20} color={COLORS.primary} />}
                   placeholder="Ex: TASK-001, BUG-123"
+                  maxLength={100}
                   returnKeyType="next"
                   style={styles.input}
                 />
@@ -378,6 +382,7 @@ const TaskCreateScreen: React.FC = () => {
                   placeholder="Digite o título da tarefa&#10;Máximo 200 caracteres"
                   multiline
                   numberOfLines={2}
+                  maxLength={200}
                   returnKeyType="next"
                   style={[styles.input, styles.textArea]}
                 />
@@ -416,6 +421,7 @@ const TaskCreateScreen: React.FC = () => {
                   error={errors.systemModule?.message}
                   leftIcon={<Ionicons name="cube-outline" size={20} color={COLORS.primary} />}
                   placeholder="Ex: Usuários, Relatórios, Dashboard"
+                  maxLength={100}
                   returnKeyType="next"
                   style={styles.input}
                 />
@@ -437,6 +443,7 @@ const TaskCreateScreen: React.FC = () => {
                   error={errors.serverOrigin?.message}
                   leftIcon={<Ionicons name="server-outline" size={20} color={COLORS.primary} />}
                   placeholder="Ex: Produção, Homologação, Local"
+                  maxLength={100}
                   returnKeyType="next"
                   style={styles.input}
                 />
@@ -481,6 +488,7 @@ const TaskCreateScreen: React.FC = () => {
                   error={errors.meetingLink?.message}
                   leftIcon={<Ionicons name="videocam-outline" size={20} color={COLORS.primary} />}
                   placeholder="https://meet.google.com/..."
+                  maxLength={500}
                   keyboardType="url"
                   autoCapitalize="none"
                   returnKeyType="next"
@@ -505,6 +513,7 @@ const TaskCreateScreen: React.FC = () => {
                   error={errors.link?.message}
                   leftIcon={<Ionicons name="link-outline" size={20} color={COLORS.primary} />}
                   placeholder="https://exemplo.com (opcional)"
+                  maxLength={200}
                   keyboardType="url"
                   autoCapitalize="none"
                   returnKeyType="next"
@@ -618,6 +627,7 @@ const TaskCreateScreen: React.FC = () => {
                       placeholder="Digite o título da subtarefa&#10;Máximo 200 caracteres"
                       multiline
                       numberOfLines={2}
+                      maxLength={200}
                       style={[styles.input, styles.textArea]}
                     />
                   )}
