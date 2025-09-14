@@ -362,7 +362,6 @@ const TaskCreateScreen: React.FC = () => {
                   onChangeText={onChange}
                   onBlur={onBlur}
                   error={errors.code?.message}
-                  leftIcon={<Ionicons name="pricetag-outline" size={20} color={COLORS.primary} />}
                   placeholder="Ex: TASK-001, BUG-123"
                   maxLength={100}
                   returnKeyType="next"
@@ -399,7 +398,6 @@ const TaskCreateScreen: React.FC = () => {
                   onChangeText={onChange}
                   onBlur={onBlur}
                   error={errors.title?.message}
-                  leftIcon={<Ionicons name="document-text-outline" size={20} color={COLORS.primary} />}
                   placeholder="Digite o título da tarefa&#10;Máximo 200 caracteres"
                   multiline
                   numberOfLines={2}
@@ -440,7 +438,6 @@ const TaskCreateScreen: React.FC = () => {
                   onChangeText={onChange}
                   onBlur={onBlur}
                   error={errors.systemModule?.message}
-                  leftIcon={<Ionicons name="cube-outline" size={20} color={COLORS.primary} />}
                   placeholder="Ex: Usuários, Relatórios, Dashboard"
                   maxLength={100}
                   returnKeyType="next"
@@ -462,7 +459,6 @@ const TaskCreateScreen: React.FC = () => {
                   onChangeText={onChange}
                   onBlur={onBlur}
                   error={errors.serverOrigin?.message}
-                  leftIcon={<Ionicons name="server-outline" size={20} color={COLORS.primary} />}
                   placeholder="Ex: Produção, Homologação, Local"
                   maxLength={100}
                   returnKeyType="next"
@@ -484,7 +480,6 @@ const TaskCreateScreen: React.FC = () => {
                   onChangeText={onChange}
                   onBlur={onBlur}
                   error={errors.description?.message}
-                  leftIcon={<Ionicons name="text-outline" size={20} color={COLORS.primary} />}
                   placeholder="Descreva a tarefa em detalhes (opcional)&#10;Você pode usar múltiplas linhas&#10;Sem limite de caracteres..."
                   multiline
                   numberOfLines={6}
@@ -507,7 +502,6 @@ const TaskCreateScreen: React.FC = () => {
                   onChangeText={onChange}
                   onBlur={onBlur}
                   error={errors.meetingLink?.message}
-                  leftIcon={<Ionicons name="videocam-outline" size={20} color={COLORS.primary} />}
                   placeholder="https://meet.google.com/..."
                   maxLength={500}
                   keyboardType="url"
@@ -532,7 +526,6 @@ const TaskCreateScreen: React.FC = () => {
                   onChangeText={onChange}
                   onBlur={onBlur}
                   error={errors.link?.message}
-                  leftIcon={<Ionicons name="link-outline" size={20} color={COLORS.primary} />}
                   placeholder="https://exemplo.com (opcional)"
                   maxLength={200}
                   keyboardType="url"
@@ -584,8 +577,7 @@ const TaskCreateScreen: React.FC = () => {
                     }}
                     onBlur={onBlur}
                     error={errors.amount?.message}
-                    leftIcon={<Text style={styles.currencyIcon}>R$</Text>}
-                    placeholder="0,00"
+                    placeholder="R$ 0,00"
                     keyboardType="decimal-pad"
                     returnKeyType="done"
                     style={styles.input}
@@ -665,8 +657,7 @@ const TaskCreateScreen: React.FC = () => {
                       }}
                       onBlur={onBlur}
                       error={errors.subTasks?.[index]?.amount?.message}
-                      leftIcon={<Text style={styles.currencyIcon}>R$</Text>}
-                      placeholder="0,00"
+                      placeholder="R$ 0,00"
                       keyboardType="decimal-pad"
                       style={styles.input}
                     />
