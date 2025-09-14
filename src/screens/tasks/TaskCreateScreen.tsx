@@ -70,6 +70,7 @@ const schema = yup.object().shape({
   amount: yup
     .number()
     .optional()
+    .nullable()
     .min(0, 'Valor deve ser maior ou igual a zero'),
   notes: yup.string().optional(), // Campo removido mas mantido para compatibilidade
   hasSubTasks: yup.boolean().optional(),
@@ -132,7 +133,7 @@ const TaskCreateScreen: React.FC = () => {
       serverOrigin: '',
       meetingLink: '',
       link: '',
-      amount: 0,
+      amount: undefined,
       hasSubTasks: false,
       subTasks: [],
       notes: '', // Campo removido mas mantido para compatibilidade
@@ -189,6 +190,36 @@ const TaskCreateScreen: React.FC = () => {
     }
   }, [hasSubTasks, watchedSubTasksAmounts, subTasks]);
 
+  // Estado para controlar o texto de entrada dos campos monetários
+  const [amountText, setAmountText] = useState('');
+  const [subtaskAmountTexts, setSubtaskAmountTexts] = useState<{[key: number]: string}>({});
+
+  // Função para formatar valor para exibição (apenas no blur)
+  const formatCurrencyDisplay = (value: string): string => {
+    if (!value || value === '') return '';
+    // Remove tudo exceto números, vírgula e ponto
+    const cleaned = value.replace(/[^\d,\.]/g, '');
+    // Se tem apenas números, formata como decimal
+    if (/^\d+$/.test(cleaned)) {
+      const num = parseFloat(cleaned);
+      return num.toFixed(2).replace('.', ',');
+    }
+    // Se já tem vírgula ou ponto, mantém
+    return cleaned;
+  };
+
+  // Função para converter texto para número
+  const parseTextToNumber = (text: string): number | undefined => {
+    if (!text || text.trim() === '') return undefined;
+    // Remove tudo exceto números, vírgula e ponto
+    const cleaned = text.replace(/[^\d,\.]/g, '');
+    if (cleaned === '') return undefined;
+    // Substitui vírgula por ponto para conversão
+    const normalized = cleaned.replace(',', '.');
+    const num = parseFloat(normalized);
+    return isNaN(num) ? undefined : Math.round(num * 100) / 100;
+  };
+
   const loadRequesters = async () => {
     try {
       setLoadingRequesters(true);
@@ -242,7 +273,25 @@ const TaskCreateScreen: React.FC = () => {
       'Tem certeza que deseja remover esta subtarefa?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Remover', style: 'destructive', onPress: () => remove(index) },
+        { text: 'Remover', style: 'destructive', onPress: () => {
+          remove(index);
+          // Remove o texto associado à subtarefa
+          setSubtaskAmountTexts(prev => {
+            const newTexts = { ...prev };
+            delete newTexts[index];
+            // Reindexar os textos restantes
+            const reindexed: {[key: number]: string} = {};
+            Object.keys(newTexts).forEach(key => {
+              const numKey = parseInt(key);
+              if (numKey > index) {
+                reindexed[numKey - 1] = newTexts[numKey];
+              } else {
+                reindexed[numKey] = newTexts[numKey];
+              }
+            });
+            return reindexed;
+          });
+        }},
       ]
     );
   };
@@ -277,6 +326,15 @@ const TaskCreateScreen: React.FC = () => {
         }
       }
 
+      // Garantir que o valor do amount seja capturado do texto se necessário
+      let finalAmount = data.amount;
+      if (!data.hasSubTasks && amountText) {
+        const parsedAmount = parseTextToNumber(amountText);
+        if (parsedAmount !== undefined) {
+          finalAmount = parsedAmount;
+        }
+      }
+
       const createData: CreateTaskData = {
         code: data.code,
         title: data.title,
@@ -289,13 +347,30 @@ const TaskCreateScreen: React.FC = () => {
         meetingLink: data.meetingLink,
         link: data.link,
         hasSubTasks: data.hasSubTasks,
-        amount: data.hasSubTasks ? undefined : (data.amount || 0),
-        subTasks: data.hasSubTasks ? (data.subTasks || []).map((subTask: any) => ({
-          ...subTask,
-          amount: parseFloat(subTask.amount?.toString() || '0'),
-          taskId: null, // Para criação de nova tarefa
-        })) : undefined,
+        amount: data.hasSubTasks ? undefined : finalAmount,
+        subTasks: data.hasSubTasks ? (data.subTasks || []).map((subTask: any, index: number) => {
+          // Garantir que o valor da subtarefa seja capturado do texto se necessário
+          let subTaskAmount = subTask.amount;
+          const subtaskText = subtaskAmountTexts[index];
+          if (subtaskText) {
+            const parsedSubAmount = parseTextToNumber(subtaskText);
+            if (parsedSubAmount !== undefined) {
+              subTaskAmount = parsedSubAmount;
+            }
+          }
+
+          return {
+            ...subTask,
+            amount: subTaskAmount || 0,
+            taskId: null, // Para criação de nova tarefa
+          };
+        }) : undefined,
       };
+
+      // Debug log para verificar os dados enviados
+      console.log('📝 Dados sendo enviados:', JSON.stringify(createData, null, 2));
+      console.log('💰 Valor amount final:', createData.amount);
+      console.log('📊 amountText:', amountText);
 
       // Se houver arquivos, usar a API com anexos
       if (selectedFiles.length > 0) {
@@ -569,15 +644,29 @@ const TaskCreateScreen: React.FC = () => {
                 name="amount"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <Input
-                    label="Valor da Tarefa"
-                    value={value?.toString() || '0'}
+                    label="Valor da Tarefa (opcional)"
+                    value={amountText}
                     onChangeText={(text) => {
-                      const numValue = parseFloat(text.replace(',', '.')) || 0;
-                      onChange(numValue);
+                      // Permite digitar livremente
+                      setAmountText(text);
                     }}
-                    onBlur={onBlur}
+                    onBlur={() => {
+                      // Formata e salva o valor no blur
+                      const formatted = formatCurrencyDisplay(amountText);
+                      setAmountText(formatted);
+                      const numValue = parseTextToNumber(amountText);
+                      onChange(numValue);
+                      onBlur();
+                    }}
+                    onFocus={() => {
+                      // Se o campo está vazio e tem valor, mostra o valor
+                      if (amountText === '' && value) {
+                        const displayValue = value.toString().replace('.', ',');
+                        setAmountText(displayValue);
+                      }
+                    }}
                     error={errors.amount?.message}
-                    placeholder="R$ 0,00"
+                    placeholder="0,00"
                     keyboardType="decimal-pad"
                     returnKeyType="done"
                     style={styles.input}
@@ -650,14 +739,38 @@ const TaskCreateScreen: React.FC = () => {
                   render={({ field: { onChange, onBlur, value } }) => (
                     <Input
                       label="Valor"
-                      value={value?.toString() || '0'}
+                      value={subtaskAmountTexts[index] || ''}
                       onChangeText={(text) => {
-                        const numValue = parseFloat(text.replace(',', '.')) || 0;
+                        // Permite digitar livremente
+                        setSubtaskAmountTexts(prev => ({
+                          ...prev,
+                          [index]: text
+                        }));
+                      }}
+                      onBlur={() => {
+                        // Formata e salva o valor no blur
+                        const currentText = subtaskAmountTexts[index] || '';
+                        const formatted = formatCurrencyDisplay(currentText);
+                        setSubtaskAmountTexts(prev => ({
+                          ...prev,
+                          [index]: formatted
+                        }));
+                        const numValue = parseTextToNumber(currentText);
                         onChange(numValue);
                       }}
-                      onBlur={onBlur}
+                      onFocus={() => {
+                        // Se o campo está vazio e tem valor, mostra o valor
+                        const currentText = subtaskAmountTexts[index] || '';
+                        if (currentText === '' && value) {
+                          const displayValue = value.toString().replace('.', ',');
+                          setSubtaskAmountTexts(prev => ({
+                            ...prev,
+                            [index]: displayValue
+                          }));
+                        }
+                      }}
                       error={errors.subTasks?.[index]?.amount?.message}
-                      placeholder="R$ 0,00"
+                      placeholder="0,00"
                       keyboardType="decimal-pad"
                       style={styles.input}
                     />
