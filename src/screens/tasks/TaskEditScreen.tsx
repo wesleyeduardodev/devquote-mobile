@@ -29,59 +29,76 @@ const schema = yup.object().shape({
   code: yup
     .string()
     .required('Código é obrigatório')
-    .max(50, 'Código deve ter no máximo 50 caracteres'),
+    .max(100, 'Código deve ter no máximo 100 caracteres'),
   title: yup
     .string()
     .required('Título é obrigatório')
-    .min(3, 'Título deve ter pelo menos 3 caracteres')
     .max(200, 'Título deve ter no máximo 200 caracteres'),
   description: yup
     .string()
-    .default('')
-    .max(500, 'Descrição deve ter no máximo 500 caracteres'),
+    .optional(),
   requesterId: yup
     .number()
     .required('Solicitante é obrigatório'),
   priority: yup
     .string()
-    .required('Prioridade é obrigatória'),
-  taskType: yup.string().default(''),
+    .required('Prioridade é obrigatória')
+    .max(20, 'Prioridade deve ter no máximo 20 caracteres'),
+  taskType: yup
+    .string()
+    .optional()
+    .max(50, 'Tipo de tarefa deve ter no máximo 50 caracteres'),
   systemModule: yup
     .string()
-    .default('')
+    .optional()
     .max(100, 'Módulo deve ter no máximo 100 caracteres'),
   serverOrigin: yup
     .string()
-    .default('')
+    .optional()
     .max(100, 'Servidor deve ter no máximo 100 caracteres'),
   meetingLink: yup
     .string()
-    .default('')
+    .optional()
     .url('Link da reunião deve ser uma URL válida')
     .max(500, 'Link deve ter no máximo 500 caracteres'),
   link: yup
     .string()
-    .default('')
-    .url('Link deve ser uma URL válida'),
-  hasSubTasks: yup.boolean().default(false),
-  amount: yup.number().default(0),
-  subTasks: yup.array().default([]),
+    .optional()
+    .url('Link da tarefa deve ser uma URL válida')
+    .max(200, 'Link deve ter no máximo 200 caracteres'),
+  amount: yup
+    .number()
+    .optional()
+    .nullable()
+    .min(0, 'Valor deve ser maior ou igual a zero'),
+  hasSubTasks: yup.boolean().optional(),
+  subTasks: yup.array().when('hasSubTasks', {
+    is: true,
+    then: (schema) => schema.of(
+      yup.object().shape({
+        title: yup.string().required('Título da subtarefa é obrigatório').max(200, 'Máximo 200 caracteres'),
+        description: yup.string().optional(),
+        amount: yup.number().required('Valor da subtarefa é obrigatório').min(0, 'Valor deve ser maior ou igual a zero'),
+      })
+    ).min(1, 'Quando "Esta tarefa possui subtarefas" estiver marcado, você deve adicionar pelo menos uma subtarefa'),
+    otherwise: (schema) => schema.optional(),
+  }),
 });
 
 interface FormData {
   code: string;
   title: string;
-  description: string;
+  description?: string;
   requesterId: number;
   priority: TaskPriority;
-  taskType: TaskType | '';
-  systemModule: string;
-  serverOrigin: string;
-  meetingLink: string;
-  link: string;
-  hasSubTasks: boolean;
-  amount: number;
-  subTasks: CreateSubTaskData[];
+  taskType?: TaskType | '';
+  systemModule?: string;
+  serverOrigin?: string;
+  meetingLink?: string;
+  link?: string;
+  hasSubTasks?: boolean;
+  amount?: number;
+  subTasks?: CreateSubTaskData[];
 }
 
 type RouteParams = {
@@ -104,6 +121,10 @@ const TaskEditScreen: React.FC = () => {
   const [showTaskTypeDropdown, setShowTaskTypeDropdown] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<DocumentPicker.DocumentPickerAsset[]>([]);
   const [totalSubTasksValue, setTotalSubTasksValue] = useState(0);
+
+  // Estados para controlar o texto de entrada dos campos monetários
+  const [amountText, setAmountText] = useState('');
+  const [subtaskAmountTexts, setSubtaskAmountTexts] = useState<{[key: number]: string}>({});
 
   const {
     control,
@@ -156,12 +177,53 @@ const TaskEditScreen: React.FC = () => {
     }
   }, [subTasks]);
 
+  // Funções de formatação monetária (igual ao create)
+  const formatCurrencyDisplay = (value: string): string => {
+    if (!value || value === '') return '';
+    const cleaned = value.replace(/[^\d,\.]/g, '');
+    if (/^\d+$/.test(cleaned)) {
+      const num = parseFloat(cleaned);
+      return num.toFixed(2).replace('.', ',');
+    }
+    return cleaned;
+  };
+
+  const parseTextToNumber = (text: string): number | undefined => {
+    if (!text || text.trim() === '') return undefined;
+    const cleaned = text.replace(/[^\d,\.]/g, '');
+    if (cleaned === '') return undefined;
+    const normalized = cleaned.replace(',', '.');
+    const num = parseFloat(normalized);
+    return isNaN(num) ? undefined : Math.round(num * 100) / 100;
+  };
+
   const loadTask = async () => {
     try {
       setLoading(true);
       const data = await taskService.getById(id);
       setTask(data);
       
+      // Calcula o valor total se não há subtarefas (valor deve estar na própria tarefa)
+      const taskAmount = (!data.subTasks || data.subTasks.length === 0)
+        ? (data.subTasks?.[0]?.amount || 0) // Se não tem subtarefas, pode ter valor
+        : undefined;
+
+      // Inicializa os textos dos valores monetários
+      if (taskAmount && taskAmount > 0) {
+        setAmountText(taskAmount.toFixed(2).replace('.', ','));
+      }
+
+      // Inicializa textos das subtarefas
+      if (data.subTasks && data.subTasks.length > 0) {
+        const initialSubtaskTexts: {[key: number]: string} = {};
+        data.subTasks.forEach((subtask, index) => {
+          if (subtask.amount && subtask.amount > 0) {
+            initialSubtaskTexts[index] = subtask.amount.toFixed(2).replace('.', ',');
+          }
+        });
+        setSubtaskAmountTexts(initialSubtaskTexts);
+      }
+
       // Popula o formulário com os dados da tarefa
       reset({
         code: data.code || '',
@@ -175,8 +237,12 @@ const TaskEditScreen: React.FC = () => {
         meetingLink: data.meetingLink || '',
         link: data.link || '',
         hasSubTasks: data.subTasks && data.subTasks.length > 0,
-        amount: 0, // Tasks don't have amount field, only subtasks do
-        subTasks: data.subTasks?.map(st => ({ title: st.title, description: st.description || '', amount: st.amount })) || [],
+        amount: taskAmount,
+        subTasks: data.subTasks?.map(st => ({
+          title: st.title,
+          description: st.description || '',
+          amount: st.amount || 0
+        })) || [],
       });
     } catch (error) {
       showToast('error', 'Erro ao carregar tarefa');
