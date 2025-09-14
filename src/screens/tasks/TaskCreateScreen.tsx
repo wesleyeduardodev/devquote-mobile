@@ -375,9 +375,11 @@ const TaskCreateScreen: React.FC = () => {
                   onBlur={onBlur}
                   error={errors.title?.message}
                   leftIcon={<Ionicons name="document-text-outline" size={20} color={COLORS.primary} />}
-                  placeholder="Digite o título da tarefa"
+                  placeholder="Digite o título da tarefa&#10;Máximo 200 caracteres"
+                  multiline
+                  numberOfLines={2}
                   returnKeyType="next"
-                  style={styles.input}
+                  style={[styles.input, styles.textArea]}
                 />
               )}
             />
