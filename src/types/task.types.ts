@@ -44,6 +44,8 @@ export interface CreateTaskData {
     serverOrigin?: string;
     meetingLink?: string;
     link?: string;
+    hasSubTasks?: boolean;
+    amount?: number;
     subTasks?: CreateSubTaskData[];
 }
 

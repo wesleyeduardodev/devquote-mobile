@@ -1,6 +1,6 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: __DEV__ ? 'https://f85883c42b11.ngrok-free.app/api' : 'https://your-production-api.com/api',
+  BASE_URL: __DEV__ ? 'https://c52a065e80ce.ngrok-free.app/api' : 'https://your-production-api.com/api',
   TIMEOUT: 10000,
   RETRY_ATTEMPTS: 3,
 } as const;
@@ -22,7 +22,7 @@ export const COLORS = {
   error: '#ef4444',
   danger: '#dc2626',
   info: '#3b82f6',
-  
+
   // Grayscale
   white: '#ffffff',
   black: '#000000',
@@ -36,7 +36,7 @@ export const COLORS = {
   gray700: '#374151',
   gray800: '#1f2937',
   gray900: '#111827',
-  
+
   // Gradients
   gradient: {
     primary: ['#3b82f6', '#8b5cf6'],

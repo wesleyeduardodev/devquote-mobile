@@ -38,8 +38,7 @@ const schema = yup.object().shape({
     .max(200, 'Título deve ter no máximo 200 caracteres'),
   description: yup
     .string()
-    .optional()
-    .max(500, 'Descrição deve ter no máximo 500 caracteres'),
+    .optional(),
   requesterId: yup
     .number()
     .required('Solicitante é obrigatório'),
@@ -69,16 +68,17 @@ const schema = yup.object().shape({
     .number()
     .optional()
     .min(0, 'Valor deve ser maior ou igual a zero'),
+  notes: yup.string().optional(), // Campo removido mas mantido para compatibilidade
   hasSubTasks: yup.boolean().optional(),
   subTasks: yup.array().when('hasSubTasks', {
     is: true,
     then: (schema) => schema.of(
       yup.object().shape({
-        title: yup.string().required('Título da subtarefa é obrigatório'),
+        title: yup.string().required('Título da subtarefa é obrigatório').max(200, 'Máximo 200 caracteres'),
         description: yup.string().optional(),
         amount: yup.number().required('Valor da subtarefa é obrigatório').min(0, 'Valor deve ser maior ou igual a zero'),
       })
-    ).min(1, 'Adicione pelo menos uma subtarefa'),
+    ).min(1, 'Quando "Esta tarefa possui subtarefas" estiver marcado, você deve adicionar pelo menos uma subtarefa'),
     otherwise: (schema) => schema.optional(),
   }),
 });
@@ -97,6 +97,7 @@ interface FormData {
   amount?: number;
   hasSubTasks?: boolean;
   subTasks?: CreateSubTaskData[];
+  notes?: string; // Campo removido mas mantido para compatibilidade
 }
 
 const TaskCreateScreen: React.FC = () => {
@@ -131,9 +132,10 @@ const TaskCreateScreen: React.FC = () => {
       amount: 0,
       hasSubTasks: false,
       subTasks: [],
+      notes: '', // Campo removido mas mantido para compatibilidade
     },
     mode: 'onChange',
-    resolver: yupResolver(schema),
+    resolver: yupResolver(schema) as any,
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -221,6 +223,33 @@ const TaskCreateScreen: React.FC = () => {
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     try {
+      // Validação customizada para subtarefas (igual ao frontend)
+      if (data.hasSubTasks) {
+        if (!data.subTasks || data.subTasks.length === 0) {
+          showToast('error', 'Quando "Esta tarefa possui subtarefas" estiver marcado, você deve adicionar pelo menos uma subtarefa');
+          setLoading(false);
+          return;
+        }
+
+        // Validar se cada subtarefa tem título preenchido
+        const invalidSubtasks = data.subTasks
+          .map((subTask: any, index: number) => ({
+            index: index + 1,
+            hasTitle: subTask.title && subTask.title.trim() !== ''
+          }))
+          .filter(st => !st.hasTitle);
+
+        if (invalidSubtasks.length > 0) {
+          const errorMsg = invalidSubtasks.length === 1
+            ? `Subtarefa ${invalidSubtasks[0].index}: O título é obrigatório`
+            : `Subtarefas ${invalidSubtasks.map(st => st.index).join(', ')}: Os títulos são obrigatórios`;
+
+          showToast('error', errorMsg);
+          setLoading(false);
+          return;
+        }
+      }
+
       const createData: CreateTaskData = {
         code: data.code,
         title: data.title,
@@ -232,6 +261,8 @@ const TaskCreateScreen: React.FC = () => {
         serverOrigin: data.serverOrigin,
         meetingLink: data.meetingLink,
         link: data.link,
+        hasSubTasks: data.hasSubTasks,
+        amount: data.hasSubTasks ? undefined : (data.amount || 0),
         subTasks: data.hasSubTasks ? data.subTasks : undefined,
       };
 
@@ -424,9 +455,9 @@ const TaskCreateScreen: React.FC = () => {
                   onBlur={onBlur}
                   error={errors.description?.message}
                   leftIcon={<Ionicons name="text-outline" size={20} color={COLORS.primary} />}
-                  placeholder="Descreva brevemente a tarefa"
+                  placeholder="Descreva a tarefa em detalhes (opcional)&#10;Você pode usar múltiplas linhas&#10;Sem limite de caracteres..."
                   multiline
-                  numberOfLines={3}
+                  numberOfLines={6}
                   returnKeyType="next"
                   style={[styles.input, styles.textArea]}
                 />
@@ -714,7 +745,7 @@ const TaskCreateScreen: React.FC = () => {
         />
         <Button
           title="Criar Tarefa"
-          onPress={handleSubmit(onSubmit)}
+          onPress={handleSubmit(onSubmit as any)}
           loading={loading}
           disabled={!isValid}
           style={styles.submitButton}
