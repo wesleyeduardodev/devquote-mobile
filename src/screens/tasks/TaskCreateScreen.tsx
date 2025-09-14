@@ -152,18 +152,42 @@ const TaskCreateScreen: React.FC = () => {
   const hasSubTasks = watch('hasSubTasks');
   const subTasks = watch('subTasks');
 
+  // Watch individual para forçar recálculo em tempo real
+  const watchedSubTasksAmounts = fields.map((_, index) =>
+    watch(`subTasks.${index}.amount`)
+  );
+
   useEffect(() => {
     loadRequesters();
   }, []);
 
   useEffect(() => {
     if (subTasks && subTasks.length > 0) {
-      const total = subTasks.reduce((sum, subtask) => sum + (subtask.amount || 0), 0);
+      const total = subTasks.reduce((sum, subtask) => {
+        // Converte para número, tratando tanto string quanto number
+        const amount = typeof subtask.amount === 'string'
+          ? parseFloat(subtask.amount.replace(',', '.')) || 0
+          : (subtask.amount || 0);
+        return sum + amount;
+      }, 0);
       setTotalSubTasksValue(total);
     } else {
       setTotalSubTasksValue(0);
     }
   }, [subTasks]);
+
+  // useEffect adicional para recalcular quando valores individuais mudarem
+  useEffect(() => {
+    if (hasSubTasks && subTasks && subTasks.length > 0) {
+      const total = subTasks.reduce((sum, subtask) => {
+        const amount = typeof subtask.amount === 'string'
+          ? parseFloat(subtask.amount.replace(',', '.')) || 0
+          : (subtask.amount || 0);
+        return sum + amount;
+      }, 0);
+      setTotalSubTasksValue(total);
+    }
+  }, [hasSubTasks, watchedSubTasksAmounts, subTasks]);
 
   const loadRequesters = async () => {
     try {
