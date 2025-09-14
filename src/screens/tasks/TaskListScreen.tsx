@@ -83,7 +83,12 @@ const TaskListScreen: React.FC = () => {
         },
       });
 
-      const newTasks = resetList ? response.content : [...tasks, ...response.content];
+      // Evita duplicação de tarefas na paginação
+      const newTasks = resetList
+        ? response.content
+        : [...tasks, ...response.content.filter(newTask =>
+            !tasks.some(existingTask => existingTask.id === newTask.id)
+          )];
       const hasMore = response.content.length === pagination.size;
       
       setTasks(newTasks);
@@ -429,7 +434,7 @@ const TaskListScreen: React.FC = () => {
         <FlatList
           data={filteredTasks}
           renderItem={renderTask}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={(item, index) => `task-${item.id}-${index}`}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={renderEmpty}
           ListFooterComponent={renderFooter}
