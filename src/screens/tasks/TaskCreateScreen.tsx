@@ -579,25 +579,6 @@ const TaskCreateScreen: React.FC = () => {
           )}
         </Card>
 
-        {/* Seção de Anexos */}
-        <Card style={styles.attachmentsCard}>
-          <View style={styles.attachmentsHeader}>
-            <Ionicons name="attach" size={24} color={COLORS.primary} />
-            <Text style={styles.attachmentsTitle}>Anexos</Text>
-            <Text style={styles.attachmentsSubtitle}>
-              Você pode adicionar arquivos que serão anexados junto com a criação da tarefa
-            </Text>
-          </View>
-          
-          <FilePicker
-            files={selectedFiles}
-            onFilesChange={setSelectedFiles}
-            maxFiles={10}
-            maxFileSize={10}
-            disabled={loading}
-          />
-        </Card>
-
         {/* Seção de Subtarefas */}
         {hasSubTasks && (
           <Card style={styles.subTasksCard}>
@@ -686,6 +667,25 @@ const TaskCreateScreen: React.FC = () => {
             />
           </Card>
         )}
+
+        {/* Seção de Anexos */}
+        <Card style={styles.attachmentsCard}>
+          <View style={styles.attachmentsHeader}>
+            <Ionicons name="attach" size={24} color={COLORS.primary} />
+            <Text style={styles.attachmentsTitle}>Anexos</Text>
+            <Text style={styles.attachmentsSubtitle}>
+              Você pode adicionar arquivos que serão anexados junto com a criação da tarefa
+            </Text>
+          </View>
+
+          <FilePicker
+            files={selectedFiles}
+            onFilesChange={setSelectedFiles}
+            maxFiles={10}
+            maxFileSize={10}
+            disabled={loading}
+          />
+        </Card>
 
       </ScrollView>
 
