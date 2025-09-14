@@ -19,7 +19,6 @@ export interface Task extends BaseEntity {
     systemModule?: string;
     serverOrigin?: string;
     meetingLink?: string;
-    notes?: string;
     link?: string;
     subTasks?: SubTask[];
 }
@@ -44,7 +43,6 @@ export interface CreateTaskData {
     systemModule?: string;
     serverOrigin?: string;
     meetingLink?: string;
-    notes?: string;
     link?: string;
     subTasks?: CreateSubTaskData[];
 }
@@ -67,7 +65,6 @@ export interface UpdateTaskData {
     systemModule?: string;
     serverOrigin?: string;
     meetingLink?: string;
-    notes?: string;
     link?: string;
     subTasks?: UpdateSubTaskData[];
 }

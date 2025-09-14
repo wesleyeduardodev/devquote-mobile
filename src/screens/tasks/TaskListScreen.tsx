@@ -271,7 +271,9 @@ const TaskListScreen: React.FC = () => {
           </View>
 
           {/* Título da tarefa */}
-          <Text style={styles.taskTitle}>{item.title}</Text>
+          <Text style={styles.taskTitle} numberOfLines={1} ellipsizeMode="tail">
+            {item.title}
+          </Text>
 
           {/* Tipo de tarefa */}
           {item.taskType && (
@@ -685,6 +687,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.gray900,
     marginBottom: SPACING.sm,
+    flex: 1,
   },
   taskTypeContainer: {
     flexDirection: 'row',

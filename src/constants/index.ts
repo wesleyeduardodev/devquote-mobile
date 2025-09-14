@@ -1,6 +1,6 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: __DEV__ ? 'https://255f1ee4cc92.ngrok-free.app/api' : 'https://your-production-api.com/api',
+  BASE_URL: __DEV__ ? 'https://f85883c42b11.ngrok-free.app/api' : 'https://your-production-api.com/api',
   TIMEOUT: 10000,
   RETRY_ATTEMPTS: 3,
 } as const;

@@ -60,10 +60,6 @@ const schema = yup.object().shape({
     .optional()
     .url('Link da reunião deve ser uma URL válida')
     .max(500, 'Link deve ter no máximo 500 caracteres'),
-  notes: yup
-    .string()
-    .optional()
-    .max(256, 'Notas devem ter no máximo 256 caracteres'),
   link: yup
     .string()
     .optional()
@@ -97,7 +93,6 @@ interface FormData {
   systemModule?: string;
   serverOrigin?: string;
   meetingLink?: string;
-  notes?: string;
   link?: string;
   amount?: number;
   hasSubTasks?: boolean;
@@ -132,7 +127,6 @@ const TaskCreateScreen: React.FC = () => {
       systemModule: '',
       serverOrigin: '',
       meetingLink: '',
-      notes: '',
       link: '',
       amount: 0,
       hasSubTasks: false,
@@ -237,7 +231,6 @@ const TaskCreateScreen: React.FC = () => {
         systemModule: data.systemModule,
         serverOrigin: data.serverOrigin,
         meetingLink: data.meetingLink,
-        notes: data.notes,
         link: data.link,
         subTasks: data.hasSubTasks ? data.subTasks : undefined,
       };
@@ -464,28 +457,6 @@ const TaskCreateScreen: React.FC = () => {
             />
           </View>
 
-          {/* Notas */}
-          <View style={styles.fieldContainer}>
-            <Controller
-              control={control}
-              name="notes"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <Input
-                  label="Notas / Observações"
-                  value={value || ''}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  error={errors.notes?.message}
-                  leftIcon={<Ionicons name="document-outline" size={20} color={COLORS.primary} />}
-                  placeholder="Informações adicionais sobre a tarefa"
-                  multiline
-                  numberOfLines={2}
-                  returnKeyType="next"
-                  style={[styles.input, styles.textArea]}
-                />
-              )}
-            />
-          </View>
 
           {/* Link da Tarefa */}
           <View style={styles.fieldContainer}>
@@ -611,8 +582,10 @@ const TaskCreateScreen: React.FC = () => {
                       onChangeText={onChange}
                       onBlur={onBlur}
                       error={errors.subTasks?.[index]?.title?.message}
-                      placeholder="Digite o título da subtarefa"
-                      style={styles.input}
+                      placeholder="Digite o título da subtarefa&#10;Máximo 200 caracteres"
+                      multiline
+                      numberOfLines={2}
+                      style={[styles.input, styles.textArea]}
                     />
                   )}
                 />
@@ -626,9 +599,9 @@ const TaskCreateScreen: React.FC = () => {
                       value={value || ''}
                       onChangeText={onChange}
                       onBlur={onBlur}
-                      placeholder="Descreva a subtarefa (opcional)"
+                      placeholder="Descreva a subtarefa em detalhes (opcional)&#10;Sem limite de caracteres..."
                       multiline
-                      numberOfLines={2}
+                      numberOfLines={4}
                       style={[styles.input, styles.textArea]}
                     />
                   )}

@@ -7,20 +7,23 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Switch,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 import { taskService } from '../../services/taskService';
 import { requesterService } from '../../services/requesterService';
-import { Task, UpdateTaskData, TaskPriority, TaskType } from '../../types/task.types';
+import { Task, UpdateTaskData, TaskPriority, TaskType, CreateTaskData, SubTask, CreateSubTaskData } from '../../types/task.types';
 import { Requester } from '../../types/requester.types';
-import { Input, Button, Card, LoadingSpinner } from '../../components/ui';
+import { Input, Button, Card, LoadingSpinner, SelectModal } from '../../components/ui';
+import FilePicker from '../../components/ui/FilePicker';
 import { COLORS, SPACING } from '../../constants';
 import { showToast } from '../../utils/toast';
+import * as DocumentPicker from 'expo-document-picker';
 
 const schema = yup.object().shape({
   code: yup
@@ -34,50 +37,51 @@ const schema = yup.object().shape({
     .max(200, 'Título deve ter no máximo 200 caracteres'),
   description: yup
     .string()
-    .optional()
-    .max(200, 'Descrição deve ter no máximo 200 caracteres'),
+    .default('')
+    .max(500, 'Descrição deve ter no máximo 500 caracteres'),
   requesterId: yup
     .number()
     .required('Solicitante é obrigatório'),
   priority: yup
     .string()
     .required('Prioridade é obrigatória'),
-  taskType: yup.string().optional(),
+  taskType: yup.string().default(''),
   systemModule: yup
     .string()
-    .optional()
+    .default('')
     .max(100, 'Módulo deve ter no máximo 100 caracteres'),
   serverOrigin: yup
     .string()
-    .optional()
+    .default('')
     .max(100, 'Servidor deve ter no máximo 100 caracteres'),
   meetingLink: yup
     .string()
-    .optional()
+    .default('')
     .url('Link da reunião deve ser uma URL válida')
     .max(500, 'Link deve ter no máximo 500 caracteres'),
-  notes: yup
-    .string()
-    .optional()
-    .max(256, 'Notas devem ter no máximo 256 caracteres'),
   link: yup
     .string()
-    .optional()
+    .default('')
     .url('Link deve ser uma URL válida'),
+  hasSubTasks: yup.boolean().default(false),
+  amount: yup.number().default(0),
+  subTasks: yup.array().default([]),
 });
 
 interface FormData {
   code: string;
   title: string;
-  description?: string;
+  description: string;
   requesterId: number;
-  priority?: TaskPriority;
-  taskType?: TaskType;
-  systemModule?: string;
-  serverOrigin?: string;
-  meetingLink?: string;
-  notes?: string;
-  link?: string;
+  priority: TaskPriority;
+  taskType: TaskType | '';
+  systemModule: string;
+  serverOrigin: string;
+  meetingLink: string;
+  link: string;
+  hasSubTasks: boolean;
+  amount: number;
+  subTasks: CreateSubTaskData[];
 }
 
 type RouteParams = {
@@ -98,13 +102,15 @@ const TaskEditScreen: React.FC = () => {
   const [showRequesterDropdown, setShowRequesterDropdown] = useState(false);
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
   const [showTaskTypeDropdown, setShowTaskTypeDropdown] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<DocumentPicker.DocumentPickerAsset[]>([]);
+  const [totalSubTasksValue, setTotalSubTasksValue] = useState(0);
 
   const {
     control,
     handleSubmit,
     watch,
     setValue,
-    formState: { errors, isValid, isDirty },
+    formState: { errors, isValid },
     reset,
   } = useForm<FormData>({
     defaultValues: {
@@ -112,26 +118,43 @@ const TaskEditScreen: React.FC = () => {
       title: '',
       description: '',
       requesterId: 0,
-      priority: 'MEDIUM',
-      taskType: '',
+      priority: 'MEDIUM' as TaskPriority,
+      taskType: '' as TaskType | '',
       systemModule: '',
       serverOrigin: '',
       meetingLink: '',
-      notes: '',
       link: '',
+      hasSubTasks: false,
+      amount: 0,
+      subTasks: [],
     },
     mode: 'onChange',
-    resolver: yupResolver(schema),
   });
 
   const selectedRequesterId = watch('requesterId');
   const selectedPriority = watch('priority');
   const selectedTaskType = watch('taskType');
+  const hasSubTasks = watch('hasSubTasks');
+  const subTasks = watch('subTasks');
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'subTasks'
+  });
 
   useEffect(() => {
     loadTask();
     loadRequesters();
   }, []);
+
+  useEffect(() => {
+    if (subTasks && subTasks.length > 0) {
+      const total = subTasks.reduce((sum, subtask) => sum + (subtask.amount || 0), 0);
+      setTotalSubTasksValue(total);
+    } else {
+      setTotalSubTasksValue(0);
+    }
+  }, [subTasks]);
 
   const loadTask = async () => {
     try {
@@ -139,6 +162,7 @@ const TaskEditScreen: React.FC = () => {
       const data = await taskService.getById(id);
       setTask(data);
       
+      // Popula o formulário com os dados da tarefa
       reset({
         code: data.code || '',
         title: data.title || '',
@@ -149,11 +173,13 @@ const TaskEditScreen: React.FC = () => {
         systemModule: data.systemModule || '',
         serverOrigin: data.serverOrigin || '',
         meetingLink: data.meetingLink || '',
-        notes: data.notes || '',
         link: data.link || '',
+        hasSubTasks: data.subTasks && data.subTasks.length > 0,
+        amount: 0, // Tasks don't have amount field, only subtasks do
+        subTasks: data.subTasks?.map(st => ({ title: st.title, description: st.description || '', amount: st.amount })) || [],
       });
     } catch (error) {
-      showToast('error', 'Erro ao carregar dados da tarefa');
+      showToast('error', 'Erro ao carregar tarefa');
       console.error('Error loading task:', error);
       navigation.goBack();
     } finally {
@@ -174,34 +200,6 @@ const TaskEditScreen: React.FC = () => {
     }
   };
 
-  const onSubmit = async (data: FormData) => {
-    setSaving(true);
-    try {
-      const updateData: UpdateTaskData = {
-        code: data.code,
-        title: data.title,
-        description: data.description,
-        requesterId: data.requesterId,
-        priority: data.priority,
-        taskType: data.taskType,
-        systemModule: data.systemModule,
-        serverOrigin: data.serverOrigin,
-        meetingLink: data.meetingLink,
-        notes: data.notes,
-        link: data.link,
-      };
-
-      await taskService.update(id, updateData);
-      showToast('success', 'Tarefa atualizada com sucesso!');
-      navigation.goBack();
-    } catch (error: any) {
-      showToast('error', 'Erro ao atualizar tarefa');
-      console.error('Error updating task:', error);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const getSelectedRequesterName = () => {
     if (!selectedRequesterId || selectedRequesterId === 0) return 'Selecione um solicitante';
     const requester = requesters.find(r => r.id === selectedRequesterId);
@@ -218,14 +216,50 @@ const TaskEditScreen: React.FC = () => {
     return displays[priority || 'MEDIUM'];
   };
 
-  const getTaskTypeDisplay = (taskType?: TaskType) => {
+  const getTaskTypeDisplay = (taskType?: TaskType | '') => {
     const displays = {
-      '': { label: 'Selecione um tipo', color: COLORS.gray500, icon: '📝' },
+      '': { label: 'Não especificado', color: COLORS.gray600, icon: '📝' },
       'BUG': { label: 'Correção (Bug)', color: COLORS.danger, icon: '🐛' },
       'ENHANCEMENT': { label: 'Melhoria', color: '#FF8C00', icon: '⚡' },
       'NEW_FEATURE': { label: 'Nova Funcionalidade', color: COLORS.success, icon: '✨' },
     };
     return displays[taskType || ''];
+  };
+
+  const handleAddSubTask = () => {
+    append({ title: '', description: '', amount: 0 } as CreateSubTaskData);
+  };
+
+  const handleRemoveSubTask = (index: number) => {
+    remove(index);
+  };
+
+  const onSubmit = async (data: FormData) => {
+    setSaving(true);
+    try {
+      const updateData: UpdateTaskData = {
+        code: data.code,
+        title: data.title,
+        description: data.description,
+        requesterId: data.requesterId,
+        priority: data.priority,
+        taskType: data.taskType,
+        systemModule: data.systemModule,
+        serverOrigin: data.serverOrigin,
+        meetingLink: data.meetingLink,
+        link: data.link,
+        subTasks: data.hasSubTasks ? data.subTasks : undefined,
+      };
+
+      await taskService.update(id, updateData);
+      showToast('success', 'Tarefa atualizada com sucesso!');
+      navigation.goBack();
+    } catch (error: any) {
+      showToast('error', 'Erro ao atualizar tarefa');
+      console.error('Error updating task:', error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -252,6 +286,60 @@ const TaskEditScreen: React.FC = () => {
 
         {/* Form Card */}
         <Card style={styles.formCard}>
+          {/* Solicitante - Primeiro campo */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Solicitante *</Text>
+            <TouchableOpacity 
+              style={[styles.selectButton, errors.requesterId && styles.selectButtonError]}
+              onPress={() => setShowRequesterDropdown(true)}
+            >
+              <Ionicons name="person-outline" size={20} color={COLORS.primary} />
+              <Text style={[styles.selectButtonText, selectedRequesterId === 0 && styles.selectButtonPlaceholder]}>
+                {getSelectedRequesterName()}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color={COLORS.gray400} />
+            </TouchableOpacity>
+            {errors.requesterId && (
+              <Text style={styles.errorText}>{errors.requesterId.message}</Text>
+            )}
+          </View>
+
+          {/* Código */}
+          <View style={styles.fieldContainer}>
+            <Controller
+              control={control}
+              name="code"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="Código *"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.code?.message}
+                  leftIcon={<Ionicons name="pricetag-outline" size={20} color={COLORS.primary} />}
+                  placeholder="Ex: TASK-001, BUG-123"
+                  returnKeyType="next"
+                  style={styles.input}
+                />
+              )}
+            />
+          </View>
+
+          {/* Prioridade */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Prioridade *</Text>
+            <TouchableOpacity 
+              style={styles.selectButton}
+              onPress={() => setShowPriorityDropdown(true)}
+            >
+              <Text style={styles.priorityIcon}>{getPriorityDisplay(selectedPriority).icon}</Text>
+              <Text style={[styles.selectButtonText, { color: getPriorityDisplay(selectedPriority).color }]}>
+                {getPriorityDisplay(selectedPriority).label}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color={COLORS.gray400} />
+            </TouchableOpacity>
+          </View>
+
           {/* Título */}
           <View style={styles.fieldContainer}>
             <Controller
@@ -266,6 +354,63 @@ const TaskEditScreen: React.FC = () => {
                   error={errors.title?.message}
                   leftIcon={<Ionicons name="document-text-outline" size={20} color={COLORS.primary} />}
                   placeholder="Digite o título da tarefa"
+                  returnKeyType="next"
+                  style={styles.input}
+                />
+              )}
+            />
+          </View>
+
+          {/* Tipo de Tarefa */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Tipo de Tarefa</Text>
+            <TouchableOpacity 
+              style={styles.selectButton}
+              onPress={() => setShowTaskTypeDropdown(true)}
+            >
+              <Text style={styles.priorityIcon}>{getTaskTypeDisplay(selectedTaskType).icon}</Text>
+              <Text style={[styles.selectButtonText, { color: getTaskTypeDisplay(selectedTaskType).color }]}>
+                {getTaskTypeDisplay(selectedTaskType).label}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color={COLORS.gray400} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Módulo do Sistema */}
+          <View style={styles.fieldContainer}>
+            <Controller
+              control={control}
+              name="systemModule"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="Módulo do Sistema"
+                  value={value || ''}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.systemModule?.message}
+                  leftIcon={<Ionicons name="cube-outline" size={20} color={COLORS.primary} />}
+                  placeholder="Ex: Usuários, Relatórios, Dashboard"
+                  returnKeyType="next"
+                  style={styles.input}
+                />
+              )}
+            />
+          </View>
+
+          {/* Servidor de Origem */}
+          <View style={styles.fieldContainer}>
+            <Controller
+              control={control}
+              name="serverOrigin"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="Servidor de Origem"
+                  value={value || ''}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.serverOrigin?.message}
+                  leftIcon={<Ionicons name="server-outline" size={20} color={COLORS.primary} />}
+                  placeholder="Ex: Produção, Homologação, Local"
                   returnKeyType="next"
                   style={styles.input}
                 />
@@ -296,174 +441,274 @@ const TaskEditScreen: React.FC = () => {
             />
           </View>
 
-          {/* Solicitante */}
+          {/* Link da Reunião */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Solicitante *</Text>
-            <TouchableOpacity 
-              style={[styles.selectButton, errors.requesterId && styles.selectButtonError]}
-              onPress={() => setShowRequesterDropdown(true)}
-            >
-              <Ionicons name="person-outline" size={20} color={COLORS.primary} />
-              <Text style={[styles.selectButtonText, selectedRequesterId === 0 && styles.selectButtonPlaceholder]}>
-                {getSelectedRequesterName()}
-              </Text>
-              <Ionicons name="chevron-down" size={20} color={COLORS.gray400} />
-            </TouchableOpacity>
-            {errors.requesterId && (
-              <Text style={styles.errorText}>{errors.requesterId.message}</Text>
-            )}
+            <Controller
+              control={control}
+              name="meetingLink"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="Link da Reunião"
+                  value={value || ''}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.meetingLink?.message}
+                  leftIcon={<Ionicons name="videocam-outline" size={20} color={COLORS.primary} />}
+                  placeholder="https://meet.google.com/..."
+                  keyboardType="url"
+                  autoCapitalize="none"
+                  returnKeyType="next"
+                  style={styles.input}
+                />
+              )}
+            />
           </View>
 
-          {/* Prioridade */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Prioridade</Text>
-            <TouchableOpacity 
-              style={styles.selectButton}
-              onPress={() => setShowPriorityDropdown(true)}
-            >
-              <Text style={styles.priorityIcon}>{getPriorityDisplay(selectedPriority).icon}</Text>
-              <Text style={[styles.selectButtonText, { color: getPriorityDisplay(selectedPriority).color }]}>
-                {getPriorityDisplay(selectedPriority).label}
-              </Text>
-              <Ionicons name="chevron-down" size={20} color={COLORS.gray400} />
-            </TouchableOpacity>
-          </View>
 
-          {/* Link */}
+          {/* Link da Tarefa */}
           <View style={styles.fieldContainer}>
             <Controller
               control={control}
               name="link"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
-                  label="Link (opcional)"
+                  label="Link da Tarefa"
                   value={value || ''}
                   onChangeText={onChange}
                   onBlur={onBlur}
                   error={errors.link?.message}
                   leftIcon={<Ionicons name="link-outline" size={20} color={COLORS.primary} />}
-                  placeholder="https://exemplo.com"
+                  placeholder="https://exemplo.com (opcional)"
                   keyboardType="url"
                   autoCapitalize="none"
-                  returnKeyType="done"
+                  returnKeyType="next"
                   style={styles.input}
                 />
               )}
             />
           </View>
+
+          {/* Checkbox de Subtarefas */}
+          <View style={styles.switchContainer}>
+            <View style={styles.switchLeft}>
+              <Controller
+                control={control}
+                name="hasSubTasks"
+                render={({ field: { onChange, value } }) => (
+                  <Switch
+                    value={value}
+                    onValueChange={(val) => {
+                      onChange(val);
+                      if (!val) {
+                        setValue('subTasks', []);
+                      }
+                    }}
+                    trackColor={{ false: COLORS.gray300, true: COLORS.primary }}
+                    thumbColor={value ? COLORS.white : COLORS.gray100}
+                  />
+                )}
+              />
+              <Text style={styles.switchLabel}>Esta tarefa possui subtarefas?</Text>
+            </View>
+          </View>
+
+          {/* Valor da Tarefa */}
+          {!hasSubTasks && (
+            <View style={styles.fieldContainer}>
+              <Controller
+                control={control}
+                name="amount"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <Input
+                    label="Valor da Tarefa"
+                    value={value?.toString() || '0'}
+                    onChangeText={(text) => {
+                      const numValue = parseFloat(text.replace(',', '.')) || 0;
+                      onChange(numValue);
+                    }}
+                    onBlur={onBlur}
+                    error={errors.amount?.message}
+                    leftIcon={<Text style={styles.currencyIcon}>R$</Text>}
+                    placeholder="0,00"
+                    keyboardType="decimal-pad"
+                    returnKeyType="done"
+                    style={styles.input}
+                  />
+                )}
+              />
+            </View>
+          )}
         </Card>
 
-        {/* Requester Picker */}
-        {showRequesterDropdown && (
-          <Card style={styles.dropdownCard}>
-            <View style={styles.dropdownHeader}>
-              <Text style={styles.dropdownTitle}>Selecionar Solicitante</Text>
-              <TouchableOpacity onPress={() => setShowRequesterDropdown(false)}>
-                <Ionicons name="close" size={24} color={COLORS.gray500} />
-              </TouchableOpacity>
+        {/* Seção de Subtarefas */}
+        {hasSubTasks && (
+          <Card style={styles.subTasksCard}>
+            <View style={styles.subTasksHeader}>
+              <Text style={styles.subTasksTitle}>Subtarefas</Text>
+              <View style={styles.subTasksTotal}>
+                <Text style={styles.subTasksTotalLabel}>Total:</Text>
+                <Text style={styles.subTasksTotalValue}>R$ {totalSubTasksValue.toFixed(2)}</Text>
+              </View>
             </View>
-            <ScrollView style={styles.dropdownList} nestedScrollEnabled>
-              {requesters.map((requester) => (
-                <TouchableOpacity
-                  key={requester.id}
-                  style={[
-                    styles.dropdownItem, 
-                    selectedRequesterId === requester.id && styles.dropdownItemSelected
-                  ]}
-                  onPress={() => {
-                    setValue('requesterId', Number(requester.id));
-                    setShowRequesterDropdown(false);
-                  }}
-                >
-                  <Ionicons name="person" size={20} color={COLORS.primary} />
-                  <Text style={[
-                    styles.dropdownItemText,
-                    selectedRequesterId === requester.id && styles.dropdownItemTextSelected
-                  ]}>
-                    {requester.name}
-                  </Text>
-                  {selectedRequesterId === requester.id && (
-                    <Ionicons name="checkmark" size={20} color={COLORS.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </Card>
-        )}
 
-        {/* Priority Picker */}
-        {showPriorityDropdown && (
-          <Card style={styles.dropdownCard}>
-            <View style={styles.dropdownHeader}>
-              <Text style={styles.dropdownTitle}>Selecionar Prioridade</Text>
-              <TouchableOpacity onPress={() => setShowPriorityDropdown(false)}>
-                <Ionicons name="close" size={24} color={COLORS.gray500} />
-              </TouchableOpacity>
-            </View>
-            <View>
-              {(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as TaskPriority[]).map((priority) => {
-                const display = getPriorityDisplay(priority);
-                return (
-                  <TouchableOpacity
-                    key={priority}
-                    style={[
-                      styles.dropdownItem, 
-                      selectedPriority === priority && styles.dropdownItemSelected
-                    ]}
-                    onPress={() => {
-                      setValue('priority', priority);
-                      setShowPriorityDropdown(false);
-                    }}
-                  >
-                    <Text style={styles.priorityIcon}>{display.icon}</Text>
-                    <Text style={[
-                      styles.dropdownItemText,
-                      selectedPriority === priority && styles.dropdownItemTextSelected,
-                      { color: display.color }
-                    ]}>
-                      {display.label}
-                    </Text>
-                    {selectedPriority === priority && (
-                      <Ionicons name="checkmark" size={20} color={COLORS.primary} />
-                    )}
+            {fields.map((field, index) => (
+              <View key={field.id} style={styles.subTaskItem}>
+                <View style={styles.subTaskHeader}>
+                  <Text style={styles.subTaskNumber}>Subtarefa #{index + 1}</Text>
+                  <TouchableOpacity onPress={() => handleRemoveSubTask(index)}>
+                    <Ionicons name="trash-outline" size={24} color={COLORS.danger} />
                   </TouchableOpacity>
-                );
-              })}
-            </View>
+                </View>
+
+                <Controller
+                  control={control}
+                  name={`subTasks.${index}.title`}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <Input
+                      label="Título *"
+                      value={value}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      error={errors.subTasks?.[index]?.title?.message}
+                      placeholder="Digite o título da subtarefa&#10;Máximo 200 caracteres"
+                      multiline
+                      numberOfLines={2}
+                      style={[styles.input, styles.textArea]}
+                    />
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name={`subTasks.${index}.description`}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <Input
+                      label="Descrição"
+                      value={value || ''}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      placeholder="Descreva a subtarefa em detalhes (opcional)&#10;Sem limite de caracteres..."
+                      multiline
+                      numberOfLines={4}
+                      style={[styles.input, styles.textArea]}
+                    />
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name={`subTasks.${index}.amount`}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <Input
+                      label="Valor"
+                      value={value?.toString() || '0'}
+                      onChangeText={(text) => {
+                        const numValue = parseFloat(text.replace(',', '.')) || 0;
+                        onChange(numValue);
+                      }}
+                      onBlur={onBlur}
+                      error={errors.subTasks?.[index]?.amount?.message}
+                      leftIcon={<Text style={styles.currencyIcon}>R$</Text>}
+                      placeholder="0,00"
+                      keyboardType="decimal-pad"
+                      style={styles.input}
+                    />
+                  )}
+                />
+              </View>
+            ))}
+
+            <Button
+              title="+ Adicionar Subtarefa"
+              variant="outline"
+              onPress={handleAddSubTask}
+              style={styles.addSubTaskButton}
+              leftIcon={<Ionicons name="add-circle-outline" size={20} color={COLORS.primary} />}
+            />
           </Card>
         )}
 
-        {/* Informações adicionais */}
-        {task && (
-          <Card style={styles.infoCard}>
-            <Text style={styles.infoTitle}>Informações do Sistema</Text>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>ID:</Text>
-              <Text style={styles.infoValue}>{task.id}</Text>
-            </View>
-            {task.code && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Código:</Text>
-                <Text style={styles.infoValue}>{task.code}</Text>
-              </View>
-            )}
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Criado em:</Text>
-              <Text style={styles.infoValue}>
-                {task.createdAt ? new Date(task.createdAt).toLocaleDateString('pt-BR') : 'N/A'}
-              </Text>
-            </View>
-            {task.updatedAt && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Atualizado em:</Text>
-                <Text style={styles.infoValue}>
-                  {new Date(task.updatedAt).toLocaleDateString('pt-BR')}
-                </Text>
-              </View>
-            )}
-          </Card>
-        )}
+        {/* Seção de Anexos */}
+        <Card style={styles.attachmentsCard}>
+          <View style={styles.attachmentsHeader}>
+            <Ionicons name="attach" size={24} color={COLORS.primary} />
+            <Text style={styles.attachmentsTitle}>Anexos</Text>
+            <Text style={styles.attachmentsSubtitle}>
+              Você pode adicionar arquivos que serão anexados à tarefa
+            </Text>
+          </View>
+          
+          <FilePicker
+            files={selectedFiles}
+            onFilesChange={setSelectedFiles}
+            maxFiles={10}
+            maxFileSize={10}
+            disabled={saving}
+          />
+        </Card>
+
       </ScrollView>
+
+      {/* Modal de Seleção de Solicitante */}
+      <SelectModal
+        visible={showRequesterDropdown}
+        onClose={() => setShowRequesterDropdown(false)}
+        title="Selecionar Solicitante"
+        searchable={true}
+        searchPlaceholder="Buscar solicitante..."
+        options={requesters.map(requester => ({
+          id: requester.id,
+          label: requester.name,
+          value: requester.id,
+          icon: <Ionicons name="person" size={20} color={COLORS.primary} />,
+        }))}
+        selectedValue={selectedRequesterId}
+        onSelect={(option) => {
+          setValue('requesterId', Number(option.value));
+        }}
+      />
+
+      {/* Modal de Seleção de Prioridade */}
+      <SelectModal
+        visible={showPriorityDropdown}
+        onClose={() => setShowPriorityDropdown(false)}
+        title="Selecionar Prioridade"
+        options={(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as TaskPriority[]).map(priority => {
+          const display = getPriorityDisplay(priority);
+          return {
+            id: priority,
+            label: display.label,
+            value: priority,
+            icon: <Text style={{ fontSize: 18 }}>{display.icon}</Text>,
+            color: display.color,
+          };
+        })}
+        selectedValue={selectedPriority}
+        onSelect={(option) => {
+          setValue('priority', option.value);
+        }}
+      />
+
+      {/* Modal de Seleção de Tipo de Tarefa */}
+      <SelectModal
+        visible={showTaskTypeDropdown}
+        onClose={() => setShowTaskTypeDropdown(false)}
+        title="Selecionar Tipo de Tarefa"
+        options={(['', 'BUG', 'ENHANCEMENT', 'NEW_FEATURE'] as TaskType[]).map(taskType => {
+          const display = getTaskTypeDisplay(taskType);
+          return {
+            id: taskType || 'none',
+            label: display.label,
+            value: taskType,
+            icon: <Text style={{ fontSize: 18 }}>{display.icon}</Text>,
+            color: display.color,
+          };
+        })}
+        selectedValue={selectedTaskType}
+        onSelect={(option) => {
+          setValue('taskType', option.value);
+        }}
+      />
 
       {/* Bottom Actions */}
       <View style={styles.bottomActions}>
@@ -478,7 +723,7 @@ const TaskEditScreen: React.FC = () => {
           title="Salvar Alterações"
           onPress={handleSubmit(onSubmit)}
           loading={saving}
-          disabled={!isValid || !isDirty}
+          disabled={!isValid}
           style={styles.submitButton}
           leftIcon={<MaterialIcons name="save" size={20} color={COLORS.white} />}
         />
@@ -498,27 +743,24 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
-  
-  // Header styles
   headerInfo: {
     alignItems: 'center',
     paddingVertical: SPACING.xl,
     paddingHorizontal: SPACING.md,
     backgroundColor: COLORS.white,
     marginBottom: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray200,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
     color: COLORS.gray900,
     marginTop: SPACING.sm,
-    marginBottom: SPACING.xs,
+    textAlign: 'center',
   },
   headerSubtitle: {
     fontSize: 16,
     color: COLORS.gray600,
+    marginTop: SPACING.xs,
     textAlign: 'center',
   },
 
@@ -527,24 +769,110 @@ const styles = StyleSheet.create({
     margin: SPACING.md,
     padding: SPACING.lg,
   },
+  attachmentsCard: {
+    margin: SPACING.md,
+    padding: SPACING.lg,
+  },
+  attachmentsHeader: {
+    marginBottom: SPACING.md,
+  },
+  attachmentsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.gray900,
+    marginTop: SPACING.xs,
+    marginBottom: SPACING.xs,
+  },
+  attachmentsSubtitle: {
+    fontSize: 14,
+    color: COLORS.gray600,
+    lineHeight: 20,
+  },
+  switchContainer: {
+    marginBottom: SPACING.lg,
+  },
+  switchLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  switchLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: COLORS.gray900,
+    marginLeft: SPACING.md,
+  },
+  subTasksCard: {
+    margin: SPACING.md,
+    padding: SPACING.lg,
+  },
+  subTasksHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
+  subTasksTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.gray900,
+  },
+  subTasksTotal: {
+    alignItems: 'flex-end',
+  },
+  subTasksTotalLabel: {
+    fontSize: 14,
+    color: COLORS.gray600,
+  },
+  subTasksTotalValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.success,
+  },
+  subTaskItem: {
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+    borderRadius: 12,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    backgroundColor: COLORS.gray50,
+  },
+  subTaskHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  subTaskNumber: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  addSubTaskButton: {
+    borderColor: COLORS.primary,
+    backgroundColor: 'transparent',
+  },
+  currencyIcon: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
   fieldContainer: {
     marginBottom: SPACING.lg,
   },
   fieldLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.gray800,
+    color: COLORS.gray900,
     marginBottom: SPACING.sm,
   },
   input: {
-    fontSize: 16,
+    backgroundColor: COLORS.white,
   },
   textArea: {
     minHeight: 80,
-    textAlignVertical: 'top',
   },
 
-  // Custom select button styles
+  // Select styles
   selectButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -566,111 +894,33 @@ const styles = StyleSheet.create({
     marginLeft: SPACING.sm,
   },
   selectButtonPlaceholder: {
-    color: COLORS.gray400,
+    color: COLORS.gray500,
   },
-
-  // Dropdown styles
-  dropdownCard: {
-    margin: SPACING.md,
-    marginTop: 0,
-    padding: 0,
-    maxHeight: 300,
-  },
-  dropdownHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray200,
-  },
-  dropdownTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.gray800,
-  },
-  dropdownList: {
-    maxHeight: 200,
-  },
-  dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray100,
-  },
-  dropdownItemSelected: {
-    backgroundColor: COLORS.primary + '10',
-  },
-  dropdownItemText: {
-    flex: 1,
-    fontSize: 16,
-    color: COLORS.gray800,
-    marginLeft: SPACING.sm,
-  },
-  dropdownItemTextSelected: {
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-
-  // Priority specific styles
   priorityIcon: {
-    fontSize: 18,
-    marginRight: SPACING.xs,
+    fontSize: 20,
   },
-
-  // Error text
   errorText: {
     fontSize: 14,
     color: COLORS.danger,
     marginTop: SPACING.xs,
-    fontWeight: '500',
-  },
-
-  // Info card styles
-  infoCard: {
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.md,
-    padding: SPACING.lg,
-    backgroundColor: COLORS.blue50,
-  },
-  infoTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.gray900,
-    marginBottom: SPACING.md,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: COLORS.gray600,
-    fontWeight: '500',
-  },
-  infoValue: {
-    fontSize: 14,
-    color: COLORS.gray900,
-    fontWeight: '500',
   },
 
   // Bottom actions
   bottomActions: {
     flexDirection: 'row',
-    padding: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.lg,
     backgroundColor: COLORS.white,
     borderTopWidth: 1,
     borderTopColor: COLORS.gray200,
-    gap: SPACING.sm,
+    gap: SPACING.md,
   },
   cancelButton: {
     flex: 1,
+    borderColor: COLORS.gray400,
   },
   submitButton: {
-    flex: 2,
+    flex: 1,
   },
 });
 

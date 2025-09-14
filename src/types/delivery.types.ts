@@ -36,7 +36,6 @@ export interface DeliveryItem extends BaseEntity {
   script?: string;
   startedAt?: string;
   finishedAt?: string;
-  notes?: string;
 }
 
 // Status counters
@@ -85,7 +84,6 @@ export interface CreateDeliveryItemData {
   script?: string;
   startedAt?: string;
   finishedAt?: string;
-  notes?: string;
 }
 
 export interface UpdateDeliveryData {
@@ -152,7 +150,6 @@ export interface DeliveryItemFormData {
   script?: string;
   startedAt?: string;
   finishedAt?: string;
-  notes?: string;
 }
 
 // Available data for creation
