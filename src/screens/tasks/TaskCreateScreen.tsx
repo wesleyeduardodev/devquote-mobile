@@ -305,7 +305,7 @@ const TaskCreateScreen: React.FC = () => {
         await taskService.create(createData);
         showToast('success', 'Tarefa criada com sucesso!');
       }
-      
+
       navigation.goBack();
     } catch (error: any) {
       showToast('error', 'Erro ao criar tarefa');
@@ -324,25 +324,18 @@ const TaskCreateScreen: React.FC = () => {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView 
+      <ScrollView
         style={styles.scrollContainer}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Header Info */}
-        <View style={styles.headerInfo}>
-          <Ionicons name="add-circle" size={32} color={COLORS.primary} />
-          <Text style={styles.headerTitle}>Nova Tarefa</Text>
-          <Text style={styles.headerSubtitle}>Preencha os dados da nova tarefa</Text>
-        </View>
-
         {/* Form Card */}
         <Card style={styles.formCard}>
           {/* Solicitante - Primeiro campo */}
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>Solicitante *</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.selectButton, errors.requesterId && styles.selectButtonError]}
               onPress={() => setShowRequesterDropdown(true)}
             >
@@ -382,7 +375,7 @@ const TaskCreateScreen: React.FC = () => {
           {/* Prioridade */}
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>Prioridade *</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.selectButton}
               onPress={() => setShowPriorityDropdown(true)}
             >
@@ -421,7 +414,7 @@ const TaskCreateScreen: React.FC = () => {
           {/* Tipo de Tarefa */}
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>Tipo de Tarefa</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.selectButton}
               onPress={() => setShowTaskTypeDropdown(true)}
             >
@@ -807,7 +800,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
-  
+
   // Header styles
   headerInfo: {
     alignItems: 'center',
